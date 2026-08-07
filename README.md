@@ -1,4 +1,11 @@
+<p align="center">
+  <img src="app/src/main/ic_launcher-playstore.png" alt="Pica app icon" width="128">
+</p>
+
 # Pica — Pipecat Voice Client for Android
+
+> Part of the [DroidKaigi 2026 demo suite](https://github.com/m15-ai/droidkaigi2026) — see the
+> top-level repo for the session overview and the sibling demo apps.
 
 Pica is a **thin** Android voice client for [Pipecat](https://github.com/pipecat-ai/pipecat).
 You speak into the phone; a Pipecat server does all the work — speech-to-text, LLM,
