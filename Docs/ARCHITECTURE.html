@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pica — Architecture</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground: #0b1210;
+    --panel: #101915;
+    --panel-2: #14201b;
+    --line: #23342c;
+    --line-soft: #1a2822;
+    --ink: #d3e0da;
+    --ink-strong: #eef6f2;
+    --muted: #7f9289;
+    --faint: #566860;
+    --bot: #5fe0a3;      /* phosphor green — the bot / primary signal */
+    --user: #5cc6e0;     /* cyan — the user */
+    --server: #e0b073;   /* amber — the server side / the agent */
+    --bot-dim: rgba(95,224,163,0.12);
+    --user-dim: rgba(92,198,224,0.12);
+    --server-dim: rgba(224,176,115,0.12);
+    --shadow: 0 1px 0 rgba(255,255,255,0.02), 0 18px 40px -24px rgba(0,0,0,0.7);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --maxw: 1080px;
+  }
+  :root[data-theme="light"] {
+    --ground: #eef3f0;
+    --panel: #ffffff;
+    --panel-2: #f5f9f7;
+    --line: #d8e4de;
+    --line-soft: #e6efeb;
+    --ink: #26332e;
+    --ink-strong: #0d1a15;
+    --muted: #5c6d66;
+    --faint: #869890;
+    --bot: #128a5a;
+    --user: #1f7d9c;
+    --server: #a76a1e;
+    --bot-dim: rgba(18,138,90,0.10);
+    --user-dim: rgba(31,125,156,0.10);
+    --server-dim: rgba(167,106,30,0.10);
+    --shadow: 0 1px 0 rgba(0,0,0,0.02), 0 16px 34px -26px rgba(20,40,32,0.4);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --ground: #eef3f0; --panel: #ffffff; --panel-2: #f5f9f7;
+      --line: #d8e4de; --line-soft: #e6efeb;
+      --ink: #26332e; --ink-strong: #0d1a15; --muted: #5c6d66; --faint: #869890;
+      --bot: #128a5a; --user: #1f7d9c; --server: #a76a1e;
+      --bot-dim: rgba(18,138,90,0.10); --user-dim: rgba(31,125,156,0.10); --server-dim: rgba(167,106,30,0.10);
+      --shadow: 0 1px 0 rgba(0,0,0,0.02), 0 16px 34px -26px rgba(20,40,32,0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  a { color: var(--user); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--bot); outline-offset: 2px; border-radius: 3px; }
+
+  /* ---- Eyebrow / labels ---- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---- Hero ---- */
+  header.hero {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 90% at 80% -10%, var(--bot-dim), transparent 60%),
+      radial-gradient(90% 80% at 5% 0%, var(--user-dim), transparent 55%);
+  }
+  .scanlines {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+    background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(0,0,0,0.05) 3px 4px);
+    mix-blend-mode: overlay;
+  }
+  .hero-inner { padding: 64px 0 52px; position: relative; }
+  .brandline { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bot); box-shadow: 0 0 12px var(--bot); flex: none; }
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+    color: var(--ink-strong);
+    text-wrap: balance;
+    font-weight: 680;
+  }
+  h1 .accent { color: var(--bot); }
+  .lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: var(--ink);
+    max-width: 62ch;
+    margin: 0 0 30px;
+    line-height: 1.5;
+  }
+  .lede b { color: var(--ink-strong); font-weight: 600; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 13px;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .chip.g::before { background: var(--bot); }
+  .chip.c::before { background: var(--user); }
+  .chip.a::before { background: var(--server); }
+
+  /* ---- Section scaffolding ---- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--line-soft); }
+  .sec-head { margin-bottom: 30px; }
+  .sec-head h2 {
+    font-size: 1.6rem; letter-spacing: -0.02em; margin: 8px 0 6px;
+    color: var(--ink-strong); font-weight: 640; text-wrap: balance;
+  }
+  .sec-head p { margin: 0; color: var(--muted); max-width: 66ch; }
+
+  /* ---- Signal-flow diagram ---- */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 22px;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  .flow-row { display: flex; align-items: stretch; gap: 0; min-width: 640px; }
+  .device {
+    flex: none; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; text-align: center;
+  }
+  .device .glyph { font-family: var(--mono); font-size: 26px; line-height: 1; }
+  .device .lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+  .wires { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 4px 8px; }
+  .wire { position: relative; }
+  .wire .bar {
+    height: 3px; border-radius: 2px; position: relative;
+    background: linear-gradient(90deg, var(--wc, var(--bot)), color-mix(in srgb, var(--wc, var(--bot)) 30%, transparent));
+  }
+  .wire.rev .bar { background: linear-gradient(270deg, var(--wc, var(--user)), color-mix(in srgb, var(--wc, var(--user)) 30%, transparent)); }
+  .wire .tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.02em;
+    color: var(--ink); margin-bottom: 5px; display: flex; align-items: center; gap: 8px;
+  }
+  .wire .arrow { color: var(--wc, var(--bot)); font-weight: 700; }
+  .wire.rev .arrow { color: var(--wc, var(--user)); }
+
+  .server-box {
+    flex: none; width: 240px;
+    border: 1px dashed var(--server);
+    border-radius: 12px;
+    background: var(--server-dim);
+    padding: 14px 14px 12px;
+    display: flex; flex-direction: column; gap: 9px;
+    align-self: center;
+  }
+  .server-box .cap { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--server); }
+  .stage { font-family: var(--mono); font-size: 12px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .stage .n { color: var(--server); font-size: 10px; }
+  .flow-foot {
+    margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line);
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .flow-foot .rtvi { color: var(--bot); }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
+  .legend span { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  /* ---- Cards grid ---- */
+  .grid { display: grid; gap: 14px; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+  }
+  .card h3 {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.01em;
+    color: var(--ink-strong); margin: 0 0 8px; font-weight: 600;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .card h3 .role { color: var(--bot); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink); line-height: 1.55; }
+
+  /* ---- Tables ---- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+  th, td { text-align: left; padding: 12px 16px; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
+  thead th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500; background: var(--panel-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code, .mono { font-family: var(--mono); font-size: 12.5px; color: var(--bot); }
+  td.dim { color: var(--muted); }
+  .col-a { color: var(--user) !important; }
+  .col-b { color: var(--server) !important; }
+  td.wide { min-width: 220px; }
+
+  /* ---- Steps ---- */
+  .steps { display: grid; gap: 12px; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
+  }
+  .step .num {
+    font-family: var(--mono); font-size: 15px; font-weight: 600;
+    width: 36px; height: 36px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bot-dim); color: var(--bot); border: 1px solid var(--line);
+  }
+  .step h4 { margin: 4px 0 5px; font-size: 15px; color: var(--ink-strong); font-weight: 600; }
+  .step p { margin: 0; font-size: 14px; color: var(--ink); line-height: 1.55; }
+
+  /* ---- Contract / code block ---- */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+  pre {
+    margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; color: var(--ink);
+  }
+  pre .k { color: var(--user); }
+  pre .s { color: var(--bot); }
+  pre .c { color: var(--faint); }
+  .method { display: inline-block; font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--bot); background: var(--bot-dim); border: 1px solid var(--line);
+    padding: 3px 9px; border-radius: 6px; letter-spacing: 0.03em; }
+
+  ul.ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
+  ul.ticks li { position: relative; padding-left: 24px; font-size: 14px; color: var(--ink); line-height: 1.5; }
+  ul.ticks li::before {
+    content: ""; position: absolute; left: 4px; top: 8px; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--bot); box-shadow: 0 0 8px var(--bot-dim);
+  }
+  ul.ticks.warn li::before { background: var(--server); box-shadow: none; }
+
+  .callout {
+    background: var(--server-dim); border: 1px solid color-mix(in srgb, var(--server) 40%, var(--line));
+    border-radius: 10px; padding: 14px 16px; font-size: 13.5px; color: var(--ink);
+  }
+  .callout b { color: var(--server); }
+
+  /* ---- Agent cards ---- */
+  .agent { border-left: 3px solid var(--ac, var(--muted)); }
+  .agent .id { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .agent .title { font-size: 16px; color: var(--ink-strong); font-weight: 640; margin: 2px 0 6px; }
+
+  /* ---- Metric callout ---- */
+  .metric {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px 26px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px;
+  }
+  .metric .big {
+    font-family: var(--mono); font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 640;
+    color: var(--bot); letter-spacing: -0.01em; white-space: nowrap;
+  }
+  .metric .big .op { color: var(--muted); margin: 0 8px; }
+  .metric .big .u { color: var(--user); }
+  .metric p { margin: 0; color: var(--ink); font-size: 14px; max-width: 46ch; }
+
+  footer { padding: 44px 0 60px; color: var(--muted); font-size: 13px; }
+  footer .deps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 24px; margin: 18px 0 22px; }
+  footer .deps div { font-family: var(--mono); font-size: 12px; color: var(--ink); border-top: 1px solid var(--line-soft); padding-top: 8px; }
+  footer .deps span { color: var(--muted); display: block; letter-spacing: 0.08em; text-transform: uppercase; font-size: 10px; margin-bottom: 3px; }
+  footer .note { font-style: italic; color: var(--faint); max-width: 70ch; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .dot { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; box-shadow: 0 0 12px var(--bot); } 50% { opacity: 0.5; box-shadow: 0 0 4px var(--bot); } }
+  }
+  @media (max-width: 560px) {
+    .hero-inner { padding: 46px 0 40px; }
+    section { padding: 44px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <div class="brandline">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="eyebrow">Pica · Pipecat voice client · Android</span>
+    </div>
+    <h1>The phone is just a <span class="accent">mic and a speaker</span>. The server is the brain.</h1>
+    <p class="lede">
+      Pica is a <b>thin</b> Android voice client for Pipecat. You speak; a Pipecat server does all the
+      work — STT, LLM, TTS, turn detection, barge-in — and streams audio back over a
+      <b>direct peer-to-peer WebRTC</b> link. No JWT, no SFU, no rooms: signaling is literally
+      <b>POST an SDP offer to <span class="mono">/api/offer</span></b>.
+    </p>
+    <div class="chips">
+      <span class="chip g">Pipecat SDK 1.1.0</span>
+      <span class="chip g">RTVI 1.0.0</span>
+      <span class="chip c">P2P WebRTC / Opus</span>
+      <span class="chip">Kotlin · Compose · MVVM</span>
+      <span class="chip">Room DB</span>
+      <span class="chip a">minSdk 26 · target 35</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ SIGNAL FLOW ============ -->
+  <section id="flow">
+    <div class="sec-head">
+      <span class="eyebrow">Signal path</span>
+      <h2>One WebRTC link, two directions, one side channel</h2>
+      <p>Audio flows peer-to-peer as Opus in both directions. The same link carries RTVI events — a
+         control side channel that drives the orb, chat, latency HUD and phosphor scope. Everything
+         between the two Opus streams lives on the server; the app never knows what's in there.</p>
+    </div>
+
+    <div class="flow">
+      <div class="flow-row">
+        <div class="device">
+          <span class="glyph" style="color:var(--user)">▲</span>
+          <span class="lbl">mic</span>
+          <span class="glyph" style="color:var(--bot)">◈</span>
+          <span class="lbl">speaker</span>
+        </div>
+
+        <div class="wires">
+          <div class="wire" style="--wc:var(--user)">
+            <div class="tag"><span class="arrow">▶</span> libwebrtc capture · AEC3 · Opus</div>
+            <div class="bar"></div>
+          </div>
+          <div class="wire rev" style="--wc:var(--bot)">
+            <div class="tag"><span class="arrow">◀</span> Opus · libwebrtc playback · AEC3</div>
+            <div class="bar"></div>
+          </div>
+        </div>
+
+        <div class="server-box">
+          <span class="cap">Pipecat server — "the agent"</span>
+          <span class="stage"><span class="n">01</span> VAD · turn detection</span>
+          <span class="stage"><span class="n">02</span> Deepgram Nova-3 STT</span>
+          <span class="stage"><span class="n">03</span> Ollama qwen3:4b-instruct</span>
+          <span class="stage"><span class="n">04</span> Cartesia Sonic-2 TTS</span>
+          <span class="stage"><span class="n">05</span> interruptions · barge-in</span>
+        </div>
+      </div>
+
+      <div class="flow-foot">
+        <span class="rtvi">◇ RTVI events</span>
+        <span>started/stopped speaking · transcripts · bot-ready · backend-error</span>
+        <span>→ orb · chat · latency HUD · scope</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--user)"></i> uplink · you</span>
+      <span><i style="background:var(--bot)"></i> downlink · bot</span>
+      <span><i style="background:var(--server)"></i> server pipeline (swappable, invisible to the app)</span>
+    </div>
+  </section>
+
+  <!-- ============ LAYERS ============ -->
+  <section id="layers">
+    <div class="sec-head">
+      <span class="eyebrow">Stack</span>
+      <h2>Architecture layers</h2>
+      <p>Single-Activity Jetpack Compose, MVVM, manual DI. The entire Pipecat SDK surface is quarantined
+         in one file behind a transport-agnostic <span class="mono">Listener</span> — everything else just reacts to events.</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">UI</td><td>Jetpack Compose + Material 3</td></tr>
+          <tr><td class="mono">State</td><td>Kotlin Coroutines + Flow, <code>StateFlow</code>, MVVM</td></tr>
+          <tr><td class="mono">Transport</td><td>Pipecat <code>SmallWebRTCTransport</code> (libwebrtc), RTVI protocol 1.0.0</td></tr>
+          <tr><td class="mono">Signaling</td><td><code>POST /api/offer</code> — SDP offer/answer, P2P</td></tr>
+          <tr><td class="mono">Audio</td><td>libwebrtc capture/playback with AEC3; <code>AudioManager</code> routing</td></tr>
+          <tr><td class="mono">Persistence</td><td>Room DB (sessions + messages), via KSP</td></tr>
+          <tr><td class="mono">Networking</td><td>OkHttp 4 (URL parsing only); WebRTC owns the media path</td></tr>
+          <tr><td class="mono">DI</td><td><code>ServiceLocator</code> (manual)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ MODULE MAP ============ -->
+  <section id="modules">
+    <div class="sec-head">
+      <span class="eyebrow">com.m15.pica</span>
+      <h2>Module map</h2>
+      <p>Where each responsibility lives. The whole vendor SDK sits in <span class="mono">net/PicaVoiceClient.kt</span> —
+         the recent 0.3.x → 1.1.0 jump touched only that file.</p>
+    </div>
+    <div class="grid two">
+      <div class="card"><h3>PicaVoiceClient.kt <span class="role">the only SDK file</span></h3><p>Wraps <span class="mono">PipecatClient</span> + <span class="mono">SmallWebRTCTransport</span>. Translates <span class="mono">PipecatEventCallbacks</span> into the app's transport-agnostic <span class="mono">Listener</span>. <span class="mono">connect()</span> POSTs the SDP offer to the agent's URL verbatim.</p></div>
+      <div class="card"><h3>VoiceAgentViewModel.kt <span class="role">session brain</span></h3><p>Owns the session across config changes. Implements <span class="mono">Listener</span>; maps RTVI events to <span class="mono">AgentUiState</span>, transcript persistence, orb amplitude, and the latency HUD. Manages the agent list, selection, and speaker routing.</p></div>
+      <div class="card"><h3>MainActivity.kt <span class="role">compose host</span></h3><p>Switches between three states: live session, read-only history viewer, idle setup+drawer. Owns the app-root snackbar, permission requests, keep-screen-on, and the mic foreground service.</p></div>
+      <div class="card"><h3>ServerEndpoint.kt <span class="role">the "agent"</span></h3><p>One selectable backend: host, port, path, scheme, label, accent. <span class="mono">url</span>/<span class="mono">badge</span> derived. <span class="mono">InitialAgents</span> seeds three from BuildConfig, then they're editable rows.</p></div>
+      <div class="card"><h3>PicaSessionHost.kt <span class="role">session driver</span></h3><p><span class="mono">DisposableEffect</span>: <span class="mono">connect()</span> on enter, <span class="mono">disconnect()</span> on dispose. Composed only while the session is active — almost nothing here, by design.</p></div>
+      <div class="card"><h3>MicForegroundService.kt <span class="role">foreground svc</span></h3><p>Holds the <span class="mono">MICROPHONE</span> foreground type so a session survives the screen turning off. Captures no audio itself — libwebrtc owns the mic; this just keeps the process promoted.</p></div>
+      <div class="card"><h3>data/ · repo/ <span class="role">persistence</span></h3><p>Room: <span class="mono">ChatSession</span> (with an agent snapshot) + <span class="mono">MessageItem</span>. <span class="mono">ConversationRepository</span> upserts incremental transcripts, streams saved sessions, and purges unsaved ones at startup.</p></div>
+      <div class="card"><h3>ui/ · di/ · prefs/ <span class="role">supporting</span></h3><p>Setup, VoiceAgent, ScopeVisualizer, drawer + viewer screens; <span class="mono">ServiceLocator</span> (repo + AudioManager); <span class="mono">PicaLocalPrefs</span> (agent list + selection + speaker pref as JSON).</p></div>
+    </div>
+  </section>
+
+  <!-- ============ SESSION LIFECYCLE ============ -->
+  <section id="lifecycle">
+    <div class="sec-head">
+      <span class="eyebrow">Runtime</span>
+      <h2>Session lifecycle</h2>
+      <p>A real sequence — each step is a genuine handoff between the UI, the ViewModel, the SDK wrapper and the server.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div><h4>Start</h4><p><span class="mono">startSession()</span> creates a Room session row (with an agent snapshot), registers an <span class="mono">AudioDeviceCallback</span> for hot-plug routing, flips <span class="mono">sessionActive=true</span>. MainActivity requests mic (+ notification) permission, starts the foreground service, keeps the screen on.</p></div></div>
+      <div class="step"><div class="num">2</div><div><h4>Connect</h4><p><span class="mono">PicaSessionHost</span> composes and calls <span class="mono">connect()</span>. A fresh <span class="mono">PicaVoiceClient</span> bound to the selected agent's URL POSTs the SDP offer; the server answers; ICE completes; media flows P2P.</p></div></div>
+      <div class="step"><div class="num">3</div><div><h4>Bot speaks first</h4><p>The server seeds a greeting on <span class="mono">on_client_connected</span>, so you hear Pica before saying anything — confirming the loop is alive end to end.</p></div></div>
+      <div class="step"><div class="num">4</div><div><h4>Converse</h4><p>libwebrtc captures the mic (AEC3), encodes Opus, ships it up. RTVI events map to UI: speaking → orb + scope tint + latency stopwatch; transcripts → chat bubbles, persisted to Room incrementally.</p></div></div>
+      <div class="step"><div class="num">5</div><div><h4>Barge-in</h4><p>Local playback stops the instant you speak (<span class="mono">onUserStartedSpeaking</span>), before the server's VAD interrupt even round-trips. The server's interruption catches up.</p></div></div>
+      <div class="step"><div class="num">6</div><div><h4>Stop</h4><p><span class="mono">onDispose → disconnect()</span> fully tears the client down (disconnect + release). <span class="mono">stopSession()</span> resets audio mode, unregisters the device callback, discards the session if unsaved, stops the foreground service. Only one backend is ever live at a time.</p></div></div>
+    </div>
+  </section>
+
+  <!-- ============ RTVI EVENTS ============ -->
+  <section id="events">
+    <div class="sec-head">
+      <span class="eyebrow">Side channel</span>
+      <h2>RTVI events → UI state</h2>
+      <p>The ViewModel implements <span class="mono">PicaVoiceClient.Listener</span> and reacts to these, ignoring the rest.</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>RTVI event</th><th>What the app does with it</th></tr></thead>
+        <tbody>
+          <tr><td><code>onConnected / onDisconnected</code></td><td>Session lifecycle. <span class="mono">onDisconnected</span> distinguishes an intentional stop from a mid-session drop — only the latter raises "Connection lost".</td></tr>
+          <tr><td><code>onBotReady</code></td><td class="dim">Logs RTVI readiness / version.</td></tr>
+          <tr><td><code>onBackendError(msg)</code></td><td>Surfaces a snackbar "Server error" while connected.</td></tr>
+          <tr><td><code>onUserStartedSpeaking</code></td><td><span style="color:var(--user)">activeSource = USER</span> (tints the scope) + locally stops playback for barge-in.</td></tr>
+          <tr><td><code>onUserStoppedSpeaking</code></td><td>Starts the <b>silence→first-audio</b> stopwatch (<span class="mono">SystemClock.elapsedRealtime</span>); sets <span class="mono">isThinking</span>.</td></tr>
+          <tr><td><code>onBotStartedSpeaking</code></td><td>Stops the stopwatch → <span class="mono">lastTurnMs</span> (the HUD number); <span style="color:var(--bot)">activeSource = BOT</span>.</td></tr>
+          <tr><td><code>onBotStoppedSpeaking</code></td><td>Clears <span class="mono">activeSource</span>; advances the bot transcript turn counter.</td></tr>
+          <tr><td><code>onUserTranscript</code></td><td>User bubbles — interim text replaces one row; <span class="mono">final</span> advances the id.</td></tr>
+          <tr><td><code>onBotTranscript</code></td><td>Assistant bubbles — sentence chunks accumulate within a turn. <span class="dim">(Deprecated in 1.x → onBotOutput; still fires.)</span></td></tr>
+          <tr><td><code>onUserAudioLevel / onRemoteAudioLevel</code></td><td class="dim">Wired to orb amplitude, but <b style="color:var(--server)">never fired</b> by the SmallWebRTC 1.1.0 client — it emits no levels. Kept ready for a future server.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ CONTRACT ============ -->
+  <section id="contract">
+    <div class="sec-head">
+      <span class="eyebrow">Client ⇄ server</span>
+      <h2>The whole contract</h2>
+      <p>As long as these hold, the server's internal pipeline wiring can change freely.</p>
+    </div>
+
+    <div class="split">
+      <div>
+        <p style="margin:0 0 10px;font-size:14px;color:var(--muted)"><span class="method">POST</span> &nbsp;<span class="mono" style="color:var(--ink)">/api/offer</span> — the only HTTP endpoint. One offer per session.</p>
+        <pre><span class="c">// request  (application/json)</span>
+{ <span class="k">"sdp"</span>: <span class="s">"&lt;offer sdp&gt;"</span>,
+  <span class="k">"type"</span>: <span class="s">"offer"</span>,
+  <span class="k">"pc_id"</span>: <span class="s">"&lt;optional&gt;"</span> }
+
+<span class="c">// response 200</span>
+{ <span class="k">"sdp"</span>: <span class="s">"&lt;answer sdp&gt;"</span>,
+  <span class="k">"type"</span>: <span class="s">"answer"</span>,
+  <span class="k">"pc_id"</span>: <span class="s">"&lt;connection id&gt;"</span> }</pre>
+        <p style="font-size:13px;color:var(--muted);margin:12px 0 0">Produced/consumed by Pipecat's <span class="mono">SmallWebRTCRequestHandler</span> (server) and <span class="mono">SmallWebRTCTransport</span> (client) — don't hand-roll it. After the answer, ICE completes and media flows P2P.</p>
+      </div>
+      <div>
+        <p style="margin:0 0 10px;font-size:14px;color:var(--muted)">What the server <b style="color:var(--ink)">must</b> do:</p>
+        <ul class="ticks">
+          <li>Answer <span class="mono">/api/offer</span> and return the handler's answer verbatim.</li>
+          <li>Run an <span class="mono">RTVIProcessor</span> + <span class="mono">RTVIObserver</span> so the app gets speaking / transcript events.</li>
+          <li>Enable VAD + interruptions for barge-in.</li>
+          <li>Seed a greeting on <span class="mono">on_client_connected</span> — the bot speaks first.</li>
+        </ul>
+        <div class="callout" style="margin-top:16px"><b>AEC3 on both ends.</b> Echo cancellation is built into libwebrtc on client and server. Do not disable it — without it, the bot transcribes itself.</div>
+        <div class="callout" style="margin-top:10px"><b>Not in v1:</b> voice selection. The app sends no voice ID; the server uses its configured Cartesia voice. Runtime switching needs an RTVI custom message on both ends.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AGENTS ============ -->
+  <section id="agents">
+    <div class="sec-head">
+      <span class="eyebrow">Configuration</span>
+      <h2>The "agent" model — a backend is just data</h2>
+      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to. Adding a backend is adding a row — no code. Three ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
+    </div>
+    <div class="grid three">
+      <div class="card agent" style="--ac:var(--server)"><span class="id">id · hermes</span><div class="title">Hermes</div><p><span class="mono">HERMES_SERVER_URL</span> — a voice persona (Kuri) on the Pi, one port. The default selection.</p></div>
+      <div class="card agent" style="--ac:var(--user)"><span class="id">id · direct</span><div class="title">Direct</div><p><span class="mono">PICA_SERVER_URL</span> — the straight Pipecat voice loop.</p></div>
+      <div class="card agent" style="--ac:#b28ce0"><span class="id">id · openclaw</span><div class="title">OpenClaw</div><p><span class="mono">OPENCLAW_SERVER_URL</span> — an agentic backend on the Pi, another port.</p></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">All three URLs are required by the build — <span class="mono">build.gradle.kts</span> fails fast if any is missing. Each is the full offer endpoint the transport POSTs to verbatim; the seeds are <b>not</b> recomputed from build config on later launches.</p>
+  </section>
+
+  <!-- ============ LATENCY ============ -->
+  <section id="latency">
+    <div class="sec-head">
+      <span class="eyebrow">The headline number</span>
+      <h2>Latency HUD</h2>
+      <p>A number you can defend on stage — measured purely client-side, so an A/B against the LiveKit sibling isolates transport <i>topology</i>, not the mic.</p>
+    </div>
+    <div class="metric">
+      <div class="big"><span class="u">onUserStoppedSpeaking</span><span class="op">→</span>onBotStartedSpeaking</div>
+      <p>Silence → first bot audio, per turn, via monotonic <span class="mono">SystemClock.elapsedRealtime()</span>. The server doesn't send this — the client owns the truth. Keeping <span class="mono">enable_metrics=True</span> server-side lets the turn-detect / LLM TTFB / TTS TTFB breakdown line up for cross-checking.</p>
+    </div>
+  </section>
+
+  <!-- ============ PICA VS LIVEKIT ============ -->
+  <section id="vs">
+    <div class="sec-head">
+      <span class="eyebrow">Why Pica exists</span>
+      <h2>Pipecat vs. LiveKit</h2>
+      <p>Sibling app <b>Lika</b> does the same job over LiveKit. Both are WebRTC + Opus under the hood, so an A/B on the same phone isolates the <i>topology</i> cost cleanly.</p>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th class="col-a">Pica · Pipecat</th><th class="col-b">Lika · LiveKit</th></tr></thead>
+        <tbody>
+          <tr><td class="dim">Connection</td><td class="col-a">Direct P2P WebRTC</td><td class="col-b">WebRTC through an SFU</td></tr>
+          <tr><td class="dim">Signaling</td><td class="col-a"><code style="color:var(--user)">POST /api/offer</code> (SDP)</td><td class="col-b">Mint JWT → join room</td></tr>
+          <tr><td class="dim">Server topology</td><td class="col-a">One process, one peer</td><td class="col-b">SFU + agent worker + room service</td></tr>
+          <tr><td class="dim">Client state</td><td class="col-a">None — no token, no participant metadata</td><td class="col-b">Token lifecycle, room/participant events</td></tr>
+          <tr><td class="dim">Echo cancellation</td><td class="col-a">AEC3 in libwebrtc (both ends)</td><td class="col-b">AEC3 in libwebrtc (both ends)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ QUIRKS ============ -->
+  <section id="quirks">
+    <div class="sec-head">
+      <span class="eyebrow">Sharp edges</span>
+      <h2>Known quirks</h2>
+    </div>
+    <ul class="ticks warn">
+      <li><b>No client-side audio levels.</b> The SmallWebRTC RTVI client never emits amplitude, so the scope is <i>event-driven</i> — it pulses on transcript tokens (<span class="mono">speechPulse</span>) rather than true amplitude. The level hooks are wired but stay at 0.</li>
+      <li><b>Voice selection is server-side in v1.</b> The app sends no voice ID; switching would need an RTVI custom message on both ends.</li>
+      <li><b>onBotTranscript is deprecated</b> in the 1.x SDK (in favor of <span class="mono">onBotOutput</span>) but still fires; migrating is a follow-up, not part of the version bump.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <span class="eyebrow">Dependencies</span>
+  <div class="deps">
+    <div><span>Pipecat</span>ai.pipecat:small-webrtc-transport:1.1.0 (+ client 1.1.0, libwebrtc, RTVI 1.0.0)</div>
+    <div><span>Compose</span>BOM 2024.10.01 · Material 3 1.3.0</div>
+    <div><span>Room</span>androidx.room 2.6.1 (KSP)</div>
+    <div><span>Coroutines</span>kotlinx-coroutines-android 1.9.0</div>
+    <div><span>OkHttp</span>okhttp 4.12.0 (URL parsing only)</div>
+    <div><span>Serialization</span>kotlinx-serialization-json 1.6.3</div>
+    <div><span>Lifecycle</span>androidx.lifecycle 2.8.6</div>
+    <div><span>Toolchain</span>Kotlin · JDK 21 · compileSdk 35</div>
+  </div>
+  <p class="note">Reference server lives in <span class="mono">Docs/</span>: Deepgram Nova-3 STT → Ollama qwen3:4b-instruct → Cartesia Sonic-2 TTS, with VAD + interruptions. Use the <span class="mono">-instruct</span> model, never plain <span class="mono">qwen3</span> — the reasoning-model latency trap. · Package id <span class="mono">com.m15.pica</span> is historical and slated to be renamed.</p>
+</footer>
+
+</body>
+</html>

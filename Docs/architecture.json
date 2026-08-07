@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema-hint",
+  "app": {
+    "name": "Pica",
+    "tagline": "A thin Android voice client for Pipecat",
+    "packageId": "com.m15.pica",
+    "packageIdNote": "Historical; slated to be renamed as the app generalizes beyond the prototype.",
+    "versionName": "0.1",
+    "versionCode": 1,
+    "thesis": "The phone is just a great microphone and speaker with a nice UI. All intelligence — STT, LLM, TTS, turn-taking, barge-in — lives on a Pipecat server. Swapping the LLM or TTS voice is a server change the app never sees.",
+    "connectionModel": "Direct peer-to-peer WebRTC using the official Pipecat Android SDK and the RTVI protocol. No JWT, no SFU, no rooms — signaling is 'POST an SDP offer to /api/offer'.",
+    "presentedAt": "Android Voice conference, one of three sibling voice apps (Cliff = hand-wired cloud streaming; GVP = fully on-device; Pica = thin client over a Pipecat server)."
+  },
+  "platform": {
+    "language": "Kotlin",
+    "ui": "Jetpack Compose + Material 3, single-Activity",
+    "architecturePattern": "MVVM",
+    "di": "Manual — ServiceLocator (no Hilt/Dagger)",
+    "minSdk": 26,
+    "targetSdk": 35,
+    "compileSdk": 35,
+    "jdk": 21
+  },
+  "designPrinciples": [
+    {
+      "name": "SDK isolation",
+      "detail": "The entire Pipecat SDK surface is quarantined in one file (net/PicaVoiceClient.kt) behind a transport-agnostic Listener interface. The major SDK jump (0.3.x -> 1.1.0, RTVI 1.0.0) touched exactly that one file — nothing else in the app moved."
+    },
+    {
+      "name": "One backend live at a time",
+      "detail": "Switching agents tears the client fully down before bringing the next up. Two backend connections are never live at once."
+    },
+    {
+      "name": "Server owns the pipeline",
+      "detail": "Everything except audio capture/playback lives on the server. The phone owns only the audio and the UI."
+    },
+    {
+      "name": "Client-side latency truth",
+      "detail": "The headline latency number (silence -> first bot audio) is measured purely client-side so an A/B against the LiveKit sibling isolates transport topology, not the mic."
+    }
+  ],
+  "layers": [
+    { "layer": "UI", "tech": "Jetpack Compose + Material 3" },
+    { "layer": "State", "tech": "Kotlin Coroutines + Flow, StateFlow, MVVM" },
+    { "layer": "Transport", "tech": "Pipecat SmallWebRTCTransport (libwebrtc), RTVI protocol 1.0.0" },
+    { "layer": "Signaling", "tech": "POST /api/offer — SDP offer/answer, P2P" },
+    { "layer": "Audio", "tech": "libwebrtc capture/playback with AEC3; AudioManager routing" },
+    { "layer": "Persistence", "tech": "Room DB (sessions + messages), via KSP" },
+    { "layer": "Networking", "tech": "OkHttp 4 (URL parsing only); WebRTC owns the media path" },
+    { "layer": "DI", "tech": "ServiceLocator (manual)" }
+  ],
+  "modules": [
+    {
+      "path": "MainActivity.kt",
+      "role": "Compose host",
+      "detail": "Single-Activity root. Switches between three top-level states: live session, read-only history viewer, and idle setup screen (with the history drawer). Owns the app-root snackbar, mic/notification permission requests, keep-screen-on, and starts/stops the mic foreground service on sessionActive."
+    },
+    {
+      "path": "App.kt",
+      "role": "Application",
+      "detail": "Calls ServiceLocator.init(this) on startup."
+    },
+    {
+      "path": "VoiceAgentViewModel.kt",
+      "role": "Session brain",
+      "detail": "Owns the voice session across config changes. Implements PicaVoiceClient.Listener; maps RTVI events to AgentUiState, transcript persistence, orb amplitude, and the latency HUD. Manages the editable agent list, agent selection, speaker routing, and saved-conversation history."
+    },
+    {
+      "path": "net/PicaVoiceClient.kt",
+      "role": "The only Pipecat-SDK file",
+      "detail": "Wraps PipecatClient + SmallWebRTCTransport. Translates PipecatEventCallbacks into the app's transport-agnostic Listener. connect() POSTs the SDP offer to the agent's URL verbatim; disconnect()/release() tear it down."
+    },
+    {
+      "path": "ServerEndpoint.kt",
+      "role": "The 'agent' model",
+      "detail": "One selectable Pipecat backend: host, port, path (default /api/offer), scheme, label, accent. url and badge are derived. InitialAgents seeds the first three from BuildConfig; after seeding they are ordinary editable/deletable rows."
+    },
+    {
+      "path": "MicForegroundService.kt",
+      "role": "Foreground service",
+      "detail": "Holds the FOREGROUND_SERVICE_TYPE_MICROPHONE type so a live session survives the screen turning off or the app backgrounding. Does not capture audio itself — libwebrtc owns the mic; this just keeps the process promoted. START_STICKY."
+    },
+    {
+      "path": "di/ServiceLocator.kt",
+      "role": "Manual DI",
+      "detail": "Lazily builds the Room DB + ConversationRepository and the system AudioManager. No token client — Pica POSTs its SDP offer straight to the full offer URL."
+    },
+    {
+      "path": "prefs/PicaLocalPrefs.kt",
+      "role": "Local prefs",
+      "detail": "Agent list + current selection + speaker preference, persisted as JSON in SharedPreferences."
+    },
+    {
+      "path": "data/db/AppDatabase.kt + Entities.kt + dao/",
+      "role": "Room persistence",
+      "detail": "ChatSession (with an agent snapshot: id/title/accent taken at creation) and MessageItem (keyed on transcript messageId). SessionDao + MessageDao. Only 'saved' sessions surface in the drawer; unsaved ones are purged at startup."
+    },
+    {
+      "path": "data/repo/ConversationRepository.kt",
+      "role": "Persistence facade",
+      "detail": "newSession (stamps agent snapshot), upsertMessage (incremental transcripts overwrite one row), savedSessions flow, save/rename/delete, and purgeUnsaved (startup crash-cleanup)."
+    },
+    {
+      "path": "ui/SetupScreen.kt",
+      "role": "Idle screen",
+      "detail": "Agent list: select / add / edit / delete, and start session."
+    },
+    {
+      "path": "ui/VoiceAgentScreen.kt",
+      "role": "Live session UI",
+      "detail": "Orb, transcript, speaker toggle, save FAB, latency HUD, visualizer toggle."
+    },
+    {
+      "path": "ui/ScopeVisualizer.kt",
+      "role": "Phosphor scope",
+      "detail": "Oscilloscope-style trace — terminal green for the bot, cyan for the user — that pulses with live speech cadence."
+    },
+    {
+      "path": "ui/PicaSessionHost.kt",
+      "role": "Session driver",
+      "detail": "DisposableEffect: vm.connect() on enter, vm.disconnect() on dispose. Composed only while sessionActive is true."
+    },
+    {
+      "path": "ui/ConversationDrawer.kt + ConversationViewerScreen.kt",
+      "role": "History",
+      "detail": "Saved-conversation drawer (open / rename / delete) and a read-only transcript viewer with Android share-sheet export."
+    },
+    {
+      "path": "util/StringUtils.kt",
+      "role": "Utilities",
+      "detail": "Small string helpers."
+    }
+  ],
+  "signalFlow": {
+    "description": "One P2P WebRTC/Opus connection carries audio both ways; RTVI events ride the same link as a side channel that drives the UI.",
+    "uplink": ["mic", "libwebrtc capture (AEC3)", "Opus encode", "WebRTC (P2P)", "server VAD + Deepgram STT"],
+    "server": {
+      "label": "Pipecat server (the 'agent')",
+      "pipeline": ["Deepgram Nova-3 STT", "Ollama qwen3:4b-instruct LLM", "Cartesia Sonic-2 TTS", "VAD / turn detection / barge-in"],
+      "note": "Reference stack; the app never knows which components are used. enable_metrics=True lets the server's latency breakdown line up with the client number."
+    },
+    "downlink": ["Cartesia TTS", "Opus encode", "WebRTC (P2P)", "libwebrtc playback (AEC3)", "speaker"],
+    "sideChannel": {
+      "label": "RTVI events",
+      "drives": ["orb", "chat transcript", "latency HUD", "phosphor scope"]
+    }
+  },
+  "sessionLifecycle": [
+    { "step": 1, "title": "Start", "detail": "SetupScreen -> startSession(). ViewModel creates a Room session row (with an agent snapshot), registers an AudioDeviceCallback for hot-plug routing, and flips sessionActive=true. MainActivity requests mic (+ notifications) permission, starts MicForegroundService, and keeps the screen on." },
+    { "step": 2, "title": "Connect", "detail": "PicaSessionHost is composed and calls vm.connect(). The ViewModel builds a fresh PicaVoiceClient bound to the selected agent's URL, then client.connect() POSTs the SDP offer to /api/offer; the server answers; ICE completes; media flows P2P." },
+    { "step": 3, "title": "Bot speaks first", "detail": "The server seeds a greeting on on_client_connected, so the user hears Pica before saying anything — confirming the loop is alive end to end." },
+    { "step": 4, "title": "Converse", "detail": "libwebrtc captures the mic (AEC3), encodes Opus, ships it to the server. RTVI events map to UI state: started/stopped speaking -> orb + scope tint + latency stopwatch; transcripts -> chat bubbles persisted to Room." },
+    { "step": 5, "title": "Barge-in", "detail": "Local TTS playback stops the instant the user speaks (onUserStartedSpeaking), before the server's VAD interrupt even round-trips. The server's interruption catches up." },
+    { "step": 6, "title": "Stop", "detail": "onDispose -> vm.disconnect() fully tears the client down (disconnect + release). stopSession() resets audio mode, unregisters the device callback, discards the session if unsaved, and stops the foreground service." }
+  ],
+  "rtviEvents": [
+    { "event": "onConnected / onDisconnected", "usedFor": "Session lifecycle. onDisconnected distinguishes an intentional stop from a mid-session drop (only the latter raises 'Connection lost')." },
+    { "event": "onBotReady(BotReadyData)", "usedFor": "Logs RTVI readiness/version." },
+    { "event": "onBackendError(msg)", "usedFor": "Surfaces a snackbar 'Server error' while connected." },
+    { "event": "onUserStartedSpeaking", "usedFor": "Sets activeSource=USER (tints the scope), and locally stops playback for barge-in." },
+    { "event": "onUserStoppedSpeaking", "usedFor": "Starts the silence->first-audio stopwatch (SystemClock.elapsedRealtime); sets isThinking=true." },
+    { "event": "onBotStartedSpeaking", "usedFor": "Stops the stopwatch -> lastTurnMs (the latency HUD number); sets activeSource=BOT." },
+    { "event": "onBotStoppedSpeaking", "usedFor": "Clears activeSource; advances the bot transcript turn counter." },
+    { "event": "onUserTranscript(Transcript{text, final})", "usedFor": "User chat bubbles — interim text replaces one row; final advances the id." },
+    { "event": "onBotTranscript(text)", "usedFor": "Assistant chat bubbles — sentence chunks accumulate within one turn. (Deprecated in 1.x in favor of onBotOutput; still fires.)" },
+    { "event": "onUserAudioLevel / onRemoteAudioLevel", "usedFor": "Wired to orb amplitude but NEVER fired by the SmallWebRTC 1.1.0 client — it emits no audio levels. Kept ready in case a future server sends them." }
+  ],
+  "clientServerContract": {
+    "signaling": {
+      "endpoint": "POST /api/offer",
+      "contentType": "application/json",
+      "request": { "sdp": "<offer sdp>", "type": "offer", "pc_id": "<optional, for renegotiation>" },
+      "response200": { "sdp": "<answer sdp>", "type": "answer", "pc_id": "<connection id>" },
+      "note": "Produced/consumed by Pipecat's SmallWebRTCRequestHandler (server) and SmallWebRTCTransport (client) — don't hand-roll it. One offer per session."
+    },
+    "audio": {
+      "uplink": "Mic -> server: Opus over WebRTC; server sees PCM after decode (STT 16 kHz).",
+      "downlink": "Server -> speaker: TTS PCM (24 kHz) encoded to Opus by the transport.",
+      "aec": "AEC3 is built into libwebrtc on BOTH ends — do not disable it, or the bot transcribes itself."
+    },
+    "requiredServerBehaviors": [
+      "Answer /api/offer and return the handler's answer verbatim.",
+      "Run an RTVIProcessor + RTVIObserver so the app gets speaking/transcript events.",
+      "Enable VAD + interruptions for barge-in.",
+      "Seed a greeting on on_client_connected (bot speaks first)."
+    ],
+    "notInV1": "Voice selection. The app sends no voice ID; the server uses its configured CARTESIA_VOICE_ID. Runtime switching would need an RTVI custom message on both ends."
+  },
+  "agentModel": {
+    "definition": "A Pipecat backend is just data: host + port + path (+ scheme) and a label/accent. Every agent speaks the identical WebRTC+RTVI contract, so the ONLY thing that differs is the offer URL the transport POSTs to. Adding a backend is adding a row — no code.",
+    "seeds": [
+      { "id": "hermes", "title": "Hermes", "source": "HERMES_SERVER_URL", "accent": "0xFFE0A066", "idea": "A voice persona (Kuri) on the Pi, one port" },
+      { "id": "direct", "title": "Direct", "source": "PICA_SERVER_URL", "accent": "0xFF66B2E0", "idea": "The straight Pipecat voice loop" },
+      { "id": "openclaw", "title": "OpenClaw", "source": "OPENCLAW_SERVER_URL", "accent": "0xFFB28CE0", "idea": "An agentic backend on the Pi, another port" }
+    ],
+    "seedingNote": "All three URLs are required by the build (build.gradle.kts fails fast if any is missing). After first launch the seeds are ordinary editable/deletable rows — NOT recomputed from build config.",
+    "defaultId": "hermes"
+  },
+  "latencyHud": {
+    "metric": "silence -> first bot audio",
+    "measurement": "onUserStoppedSpeaking -> onBotStartedSpeaking, purely client-side, using SystemClock.elapsedRealtime() (monotonic, immune to wall-clock jumps).",
+    "purpose": "The headline number for A/B-ing Pica (Pipecat, P2P) against the LiveKit-based sibling Lika on the same device — isolates transport topology, not the mic."
+  },
+  "picaVsLiveKit": {
+    "why": "Pica's sibling Lika does the same job over LiveKit; the contrast is the reason Pica exists. Both are WebRTC + Opus under the hood, so an A/B on the same phone isolates the topology cost cleanly.",
+    "rows": [
+      { "dimension": "Connection", "pica": "Direct P2P WebRTC", "lika": "WebRTC through an SFU" },
+      { "dimension": "Signaling", "pica": "POST /api/offer (SDP)", "lika": "Mint JWT -> join room" },
+      { "dimension": "Server topology", "pica": "One process, one peer", "lika": "SFU + agent worker + room service" },
+      { "dimension": "Client state", "pica": "None — no token, no participant metadata", "lika": "Token lifecycle, room/participant events" },
+      { "dimension": "Echo cancellation", "pica": "AEC3 in libwebrtc (both ends)", "lika": "AEC3 in libwebrtc (both ends)" }
+    ]
+  },
+  "persistence": {
+    "engine": "Room (KSP)",
+    "entities": {
+      "ChatSession": ["id", "title", "createdAt", "saved", "agentId (snapshot)", "agentTitle (snapshot)", "agentAccent (snapshot)"],
+      "MessageItem": ["messageId (PK)", "sessionId (indexed)", "role", "text", "createdAt"]
+    },
+    "behaviors": [
+      "Transcripts are incremental: the same messageId grows from first word to full utterance; upsert overwrites one row.",
+      "Only explicitly saved sessions appear in the history drawer; auto-title from the first user turn.",
+      "purgeUnsaved() runs at startup so a crash/OS-kill can't leave junk sessions in the drawer.",
+      "The agent snapshot keeps saved history correctly labeled/colored even after the agent is renamed or deleted."
+    ]
+  },
+  "audioRouting": {
+    "owner": "AudioManager (MODE_IN_COMMUNICATION during a session)",
+    "api31Plus": "setCommunicationDevice over availableCommunicationDevices — speaker, or Bluetooth SCO / wired headset / earpiece by preference.",
+    "legacy": "isSpeakerphoneOn / startBluetoothSco fallbacks below API 31.",
+    "hotplug": "AudioDeviceCallback re-applies routing when devices are added/removed mid-session."
+  },
+  "knownQuirks": [
+    "No client-side audio levels: the SmallWebRTC RTVI client never emits amplitude, so the scope is event-driven — it pulses on transcript tokens (speechPulse) rather than true amplitude. The onUserAudioLevel/onRemoteAudioLevel hooks are wired but stay at 0.",
+    "Voice selection is server-side in v1 — the app sends no voice ID.",
+    "onBotTranscript is deprecated in the 1.x SDK (in favor of onBotOutput) but still fires; migrating is a follow-up, not part of the version bump."
+  ],
+  "dependencies": {
+    "pipecat": "ai.pipecat:small-webrtc-transport:1.1.0 (pulls ai.pipecat:client:1.1.0 + libwebrtc; RTVI protocol 1.0.0)",
+    "compose": "Compose BOM 2024.10.01 + Material 3 1.3.0",
+    "room": "androidx.room 2.6.1 (KSP)",
+    "okhttp": "com.squareup.okhttp3:okhttp:4.12.0 (URL parsing only)",
+    "coroutines": "kotlinx-coroutines-android:1.9.0",
+    "serialization": "kotlinx-serialization-json:1.6.3",
+    "kotlinLifecycle": "androidx.lifecycle 2.8.6"
+  },
+  "referenceServer": {
+    "location": "Docs/ — server.py / main.py reference pipeline, plus CLIENT_SERVER_CONTRACT.md, SERVER_DEPLOY.md, README.md, latency.py.",
+    "stack": "Deepgram Nova-3 STT -> Ollama qwen3:4b-instruct LLM -> Cartesia Sonic-2 TTS, with VAD + interruptions.",
+    "trap": "Use the -instruct model, never plain qwen3 (the reasoning-model latency trap)."
+  }
+}
