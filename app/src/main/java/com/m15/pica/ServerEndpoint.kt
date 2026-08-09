@@ -16,6 +16,9 @@ import java.util.UUID
  * @param accentArgb 0xAARRGGBB badge tint as a [Long] — the historic literals
  *        (e.g. 0xFFE0A066) overflow a signed Int, so Long is used to round-trip
  *        cleanly through JSON and [androidx.compose.ui.graphics.Color].
+ * @param visualizer session visualizer as a [VisualizerStyle.key] string — stored
+ *        as a string (with a default) so old persisted JSON and unknown future
+ *        keys both decode cleanly. Read it via [visualizerStyle].
  */
 @Serializable
 data class ServerEndpoint(
@@ -26,9 +29,13 @@ data class ServerEndpoint(
     val path: String = DEFAULT_PATH,
     val scheme: String = "http",
     val accentArgb: Long = DEFAULT_ACCENT_ARGB,
+    val visualizer: String = VisualizerStyle.DEFAULT.key,
 ) {
     /** Full offer endpoint the SmallWebRTC transport POSTs the SDP to, verbatim. */
     val url: String get() = "$scheme://$host:$port$path"
+
+    /** The persisted [visualizer] key resolved to a style (unknown → default). */
+    val visualizerStyle: VisualizerStyle get() = VisualizerStyle.fromKey(visualizer)
 
     /** All-caps pill shown in the session header. */
     val badge: String get() = title.uppercase()

@@ -274,7 +274,13 @@ class VoiceAgentViewModel(application: Application) : AndroidViewModel(applicati
         _agents.value.firstOrNull { it.id == ui.value.selectedId }
 
     /** Add a new user agent and select it if nothing valid is currently selected. */
-    fun addAgent(title: String, host: String, port: Int, path: String = ServerEndpoint.DEFAULT_PATH) {
+    fun addAgent(
+        title: String,
+        host: String,
+        port: Int,
+        path: String = ServerEndpoint.DEFAULT_PATH,
+        visualizer: VisualizerStyle = VisualizerStyle.DEFAULT,
+    ) {
         if (ui.value.sessionActive) return
         val agent = ServerEndpoint(
             id = ServerEndpoint.newId(),
@@ -282,6 +288,7 @@ class VoiceAgentViewModel(application: Application) : AndroidViewModel(applicati
             host = host.trim(),
             port = port,
             path = path.trim().ifBlank { ServerEndpoint.DEFAULT_PATH },
+            visualizer = visualizer.key,
         )
         prefs.setAgents(_agents.value + agent)
         _agents.value = prefs.getAgents()
@@ -290,7 +297,14 @@ class VoiceAgentViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /** Edit an existing agent in place (preserves its id and accent color). */
-    fun updateAgent(id: String, title: String, host: String, port: Int, path: String = ServerEndpoint.DEFAULT_PATH) {
+    fun updateAgent(
+        id: String,
+        title: String,
+        host: String,
+        port: Int,
+        path: String = ServerEndpoint.DEFAULT_PATH,
+        visualizer: VisualizerStyle = VisualizerStyle.DEFAULT,
+    ) {
         if (ui.value.sessionActive) return
         val next = _agents.value.map {
             if (it.id == id) it.copy(
@@ -298,6 +312,7 @@ class VoiceAgentViewModel(application: Application) : AndroidViewModel(applicati
                 host = host.trim(),
                 port = port,
                 path = path.trim().ifBlank { ServerEndpoint.DEFAULT_PATH },
+                visualizer = visualizer.key,
             ) else it
         }
         prefs.setAgents(next)

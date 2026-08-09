@@ -107,6 +107,8 @@ class MainActivity : ComponentActivity() {
                                     onDismissSession = { vm.stopSession() },
                                     onToggleVisualizer = vm::toggleVisualizer,
                                     showVisualizer = showViz,
+                                    visualizerStyle = selected?.visualizerStyle
+                                        ?: com.m15.pica.VisualizerStyle.DEFAULT,
                                     audioLevel = audioLevel,
                                     badge = selected?.badge ?: "",
                                     accentArgb = selected?.accentArgb

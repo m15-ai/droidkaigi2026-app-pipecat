@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.m15.pica.ServerEndpoint
+import com.m15.pica.VisualizerStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,8 +29,8 @@ fun PicaSetupScreen(
     agents: List<ServerEndpoint>,
     selectedId: String,
     onSelect: (String) -> Unit,
-    onAdd: (title: String, host: String, port: Int, path: String) -> Unit,
-    onUpdate: (id: String, title: String, host: String, port: Int, path: String) -> Unit,
+    onAdd: (title: String, host: String, port: Int, path: String, visualizer: VisualizerStyle) -> Unit,
+    onUpdate: (id: String, title: String, host: String, port: Int, path: String, visualizer: VisualizerStyle) -> Unit,
     onDelete: (String) -> Unit,
     onStartSession: () -> Unit,
     onMenuClick: () -> Unit,
@@ -137,10 +138,10 @@ fun PicaSetupScreen(
         AgentEditorDialog(
             initial = target.agent,
             onDismiss = { editorTarget = null },
-            onConfirm = { title, host, port, path ->
+            onConfirm = { title, host, port, path, visualizer ->
                 val existing = target.agent
-                if (existing == null) onAdd(title, host, port, path)
-                else onUpdate(existing.id, title, host, port, path)
+                if (existing == null) onAdd(title, host, port, path, visualizer)
+                else onUpdate(existing.id, title, host, port, path, visualizer)
                 editorTarget = null
             },
             onDelete = target.agent?.let { agent ->
@@ -266,13 +267,14 @@ private fun AddAgentRow(onAdd: () -> Unit) {
 private fun AgentEditorDialog(
     initial: ServerEndpoint?,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, host: String, port: Int, path: String) -> Unit,
+    onConfirm: (title: String, host: String, port: Int, path: String, visualizer: VisualizerStyle) -> Unit,
     onDelete: (() -> Unit)?,
 ) {
     var title by remember { mutableStateOf(initial?.title ?: "") }
     var host by remember { mutableStateOf(initial?.host ?: "") }
     var portText by remember { mutableStateOf(initial?.port?.toString() ?: "") }
     var path by remember { mutableStateOf(initial?.path ?: ServerEndpoint.DEFAULT_PATH) }
+    var visualizer by remember { mutableStateOf(initial?.visualizerStyle ?: VisualizerStyle.DEFAULT) }
 
     val port = portText.toIntOrNull()
     val titleOk = title.isNotBlank()
@@ -320,11 +322,32 @@ private fun AgentEditorDialog(
                     singleLine = true,
                     isError = !pathOk,
                 )
+                // --- Visualizer style (radio list scales as styles are added) ---
+                Text(
+                    text = "Visualizer",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                VisualizerStyle.entries.forEach { style ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { visualizer = style },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = visualizer == style,
+                            onClick = { visualizer = style },
+                        )
+                        Text(style.label)
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { if (valid) onConfirm(title, host, port!!, path) },
+                onClick = { if (valid) onConfirm(title, host, port!!, path, visualizer) },
                 enabled = valid,
             ) { Text("Save") }
         },

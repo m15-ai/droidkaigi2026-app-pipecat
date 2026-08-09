@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.m15.pica.AgentUiState
+import com.m15.pica.VisualizerStyle
 
 @Composable
 fun VoiceAgentScreen(
@@ -45,6 +46,7 @@ fun VoiceAgentScreen(
     onDismissSession: () -> Unit,
     onToggleVisualizer: () -> Unit,
     showVisualizer: Boolean,
+    visualizerStyle: VisualizerStyle,
     audioLevel: Float,
     badge: String,
     accentArgb: Long,
@@ -165,14 +167,29 @@ fun VoiceAgentScreen(
                 .padding(pad)
         ) {
             if (showVisualizer) {
-                AcousticScopeVisualizer(
-                    level = audioLevel,
-                    source = ui.activeSource,
-                    pulse = ui.speechPulse,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp, vertical = 12.dp)
-                )
+                val vizModifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
+                when (visualizerStyle) {
+                    VisualizerStyle.SCOPE -> AcousticScopeVisualizer(
+                        level = audioLevel,
+                        source = ui.activeSource,
+                        pulse = ui.speechPulse,
+                        modifier = vizModifier,
+                    )
+                    VisualizerStyle.BASES -> BasesVisualizer(
+                        level = audioLevel,
+                        source = ui.activeSource,
+                        pulse = ui.speechPulse,
+                        modifier = vizModifier,
+                    )
+                    VisualizerStyle.ORB -> OrbVisualizer(
+                        level = audioLevel,
+                        source = ui.activeSource,
+                        pulse = ui.speechPulse,
+                        modifier = vizModifier,
+                    )
+                }
             } else {
                 Column(
                     modifier = Modifier
