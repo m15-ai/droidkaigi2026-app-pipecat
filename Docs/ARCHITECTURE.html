@@ -344,8 +344,8 @@
       <span class="eyebrow">Signal path</span>
       <h2>One WebRTC link, two directions, one side channel</h2>
       <p>Audio flows peer-to-peer as Opus in both directions. The same link carries RTVI events — a
-         control side channel that drives the orb, chat, latency HUD and phosphor scope. Everything
-         between the two Opus streams lives on the server; the app never knows what's in there.</p>
+         control side channel that drives the chat, the latency HUD and the agent's chosen visualizer.
+         Everything between the two Opus streams lives on the server; the app never knows what's in there.</p>
     </div>
 
     <div class="flow">
@@ -372,7 +372,7 @@
           <span class="cap">Pipecat server — "the agent"</span>
           <span class="stage"><span class="n">01</span> VAD · turn detection</span>
           <span class="stage"><span class="n">02</span> Deepgram Nova-3 STT</span>
-          <span class="stage"><span class="n">03</span> Ollama qwen3:4b-instruct</span>
+          <span class="stage"><span class="n">03</span> "LLM" slot — e.g. Homer's hermes-agent</span>
           <span class="stage"><span class="n">04</span> Cartesia Sonic-2 TTS</span>
           <span class="stage"><span class="n">05</span> interruptions · barge-in</span>
         </div>
@@ -381,7 +381,7 @@
       <div class="flow-foot">
         <span class="rtvi">◇ RTVI events</span>
         <span>started/stopped speaking · transcripts · bot-ready · backend-error</span>
-        <span>→ orb · chat · latency HUD · scope</span>
+        <span>→ chat · latency HUD · visualizer</span>
       </div>
     </div>
 
@@ -429,11 +429,12 @@
       <div class="card"><h3>PicaVoiceClient.kt <span class="role">the only SDK file</span></h3><p>Wraps <span class="mono">PipecatClient</span> + <span class="mono">SmallWebRTCTransport</span>. Translates <span class="mono">PipecatEventCallbacks</span> into the app's transport-agnostic <span class="mono">Listener</span>. <span class="mono">connect()</span> POSTs the SDP offer to the agent's URL verbatim.</p></div>
       <div class="card"><h3>VoiceAgentViewModel.kt <span class="role">session brain</span></h3><p>Owns the session across config changes. Implements <span class="mono">Listener</span>; maps RTVI events to <span class="mono">AgentUiState</span>, transcript persistence, orb amplitude, and the latency HUD. Manages the agent list, selection, and speaker routing.</p></div>
       <div class="card"><h3>MainActivity.kt <span class="role">compose host</span></h3><p>Switches between three states: live session, read-only history viewer, idle setup+drawer. Owns the app-root snackbar, permission requests, keep-screen-on, and the mic foreground service.</p></div>
-      <div class="card"><h3>ServerEndpoint.kt <span class="role">the "agent"</span></h3><p>One selectable backend: host, port, path, scheme, label, accent. <span class="mono">url</span>/<span class="mono">badge</span> derived. <span class="mono">InitialAgents</span> seeds three from BuildConfig, then they're editable rows.</p></div>
+      <div class="card"><h3>ServerEndpoint.kt <span class="role">the "agent"</span></h3><p>One selectable backend: host, port, path, scheme, label, accent, and a <span class="mono">visualizer</span> key (stored as a string so unknown future keys degrade to the default). <span class="mono">url</span>/<span class="mono">badge</span> derived. <span class="mono">InitialAgents</span> seeds three from BuildConfig, then they're editable rows.</p></div>
       <div class="card"><h3>PicaSessionHost.kt <span class="role">session driver</span></h3><p><span class="mono">DisposableEffect</span>: <span class="mono">connect()</span> on enter, <span class="mono">disconnect()</span> on dispose. Composed only while the session is active — almost nothing here, by design.</p></div>
       <div class="card"><h3>MicForegroundService.kt <span class="role">foreground svc</span></h3><p>Holds the <span class="mono">MICROPHONE</span> foreground type so a session survives the screen turning off. Captures no audio itself — libwebrtc owns the mic; this just keeps the process promoted.</p></div>
       <div class="card"><h3>data/ · repo/ <span class="role">persistence</span></h3><p>Room: <span class="mono">ChatSession</span> (with an agent snapshot) + <span class="mono">MessageItem</span>. <span class="mono">ConversationRepository</span> upserts incremental transcripts, streams saved sessions, and purges unsaved ones at startup.</p></div>
-      <div class="card"><h3>ui/ · di/ · prefs/ <span class="role">supporting</span></h3><p>Setup, VoiceAgent, ScopeVisualizer, drawer + viewer screens; <span class="mono">ServiceLocator</span> (repo + AudioManager); <span class="mono">PicaLocalPrefs</span> (agent list + selection + speaker pref as JSON).</p></div>
+      <div class="card"><h3>VisualizerStyle.kt · ui visualizers <span class="role">visualizers</span></h3><p>Enum of per-agent session visualizers — <span class="mono">SCOPE</span>, <span class="mono">BASES</span>, <span class="mono">ORB</span> — picked in the agent editor and switched on in <span class="mono">VoiceAgentScreen</span> (the single branch point). Rendered by <span class="mono">ScopeVisualizer</span> / <span class="mono">BasesVisualizer</span> / <span class="mono">OrbVisualizer</span>.</p></div>
+      <div class="card"><h3>ui/ · di/ · prefs/ <span class="role">supporting</span></h3><p>Setup, VoiceAgent, drawer + viewer screens; <span class="mono">ServiceLocator</span> (repo + AudioManager); <span class="mono">PicaLocalPrefs</span> (agent list + selection + speaker pref as JSON).</p></div>
     </div>
   </section>
 
@@ -448,7 +449,7 @@
       <div class="step"><div class="num">1</div><div><h4>Start</h4><p><span class="mono">startSession()</span> creates a Room session row (with an agent snapshot), registers an <span class="mono">AudioDeviceCallback</span> for hot-plug routing, flips <span class="mono">sessionActive=true</span>. MainActivity requests mic (+ notification) permission, starts the foreground service, keeps the screen on.</p></div></div>
       <div class="step"><div class="num">2</div><div><h4>Connect</h4><p><span class="mono">PicaSessionHost</span> composes and calls <span class="mono">connect()</span>. A fresh <span class="mono">PicaVoiceClient</span> bound to the selected agent's URL POSTs the SDP offer; the server answers; ICE completes; media flows P2P.</p></div></div>
       <div class="step"><div class="num">3</div><div><h4>Bot speaks first</h4><p>The server seeds a greeting on <span class="mono">on_client_connected</span>, so you hear Pica before saying anything — confirming the loop is alive end to end.</p></div></div>
-      <div class="step"><div class="num">4</div><div><h4>Converse</h4><p>libwebrtc captures the mic (AEC3), encodes Opus, ships it up. RTVI events map to UI: speaking → orb + scope tint + latency stopwatch; transcripts → chat bubbles, persisted to Room incrementally.</p></div></div>
+      <div class="step"><div class="num">4</div><div><h4>Converse</h4><p>libwebrtc captures the mic (AEC3), encodes Opus, ships it up. RTVI events map to UI: speaking → visualizer tint + latency stopwatch; transcripts → chat bubbles, persisted to Room incrementally.</p></div></div>
       <div class="step"><div class="num">5</div><div><h4>Barge-in</h4><p>Local playback stops the instant you speak (<span class="mono">onUserStartedSpeaking</span>), before the server's VAD interrupt even round-trips. The server's interruption catches up.</p></div></div>
       <div class="step"><div class="num">6</div><div><h4>Stop</h4><p><span class="mono">onDispose → disconnect()</span> fully tears the client down (disconnect + release). <span class="mono">stopSession()</span> resets audio mode, unregisters the device callback, discards the session if unsaved, stops the foreground service. Only one backend is ever live at a time.</p></div></div>
     </div>
@@ -521,7 +522,7 @@
     <div class="sec-head">
       <span class="eyebrow">Configuration</span>
       <h2>The "agent" model — a backend is just data</h2>
-      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to. Adding a backend is adding a row — no code. Three ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
+      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to — plus cosmetics: a label, an accent color, and a per-agent <b>visualizer</b>. Adding a backend is adding a row — no code. Three ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
     </div>
     <div class="grid three">
       <div class="card agent" style="--ac:var(--server)"><span class="id">id · hermes</span><div class="title">Hermes</div><p><span class="mono">HERMES_SERVER_URL</span> — a voice persona (Kuri) on the Pi, one port. The default selection.</p></div>
@@ -531,37 +532,34 @@
     <p style="font-size:13px;color:var(--muted);margin:14px 0 0">All three URLs are required by the build — <span class="mono">build.gradle.kts</span> fails fast if any is missing. Each is the full offer endpoint the transport POSTs to verbatim; the seeds are <b>not</b> recomputed from build config on later launches.</p>
   </section>
 
+  <!-- ============ VISUALIZERS ============ -->
+  <section id="visualizers">
+    <div class="sec-head">
+      <span class="eyebrow">Session UI</span>
+      <h2>Visualizers — a per-agent choice</h2>
+      <p>Each agent picks its own session visualizer in the agent editor (a radio list that enumerates
+         <span class="mono">VisualizerStyle.entries</span>). The choice is persisted on the agent as a plain
+         string key, so an unknown future key degrades to the default instead of failing to deserialize.
+         <span class="mono">VoiceAgentScreen</span> is the single branch point that composes the chosen style.</p>
+    </div>
+    <div class="grid three">
+      <div class="card agent" style="--ac:var(--bot)"><span class="id">key · scope · default</span><div class="title">Oscilloscope</div><p><span class="mono">ScopeVisualizer.kt</span> — phosphor-scope trace, terminal green for the bot, cyan for the user, pulsing with speech cadence. Agents persisted before the feature resolve to it.</p></div>
+      <div class="card agent" style="--ac:var(--user)"><span class="id">key · bases</span><div class="title">Running the Bases</div><p><span class="mono">BasesVisualizer.kt</span> — Dodger-blue ballpark. A glowing runner sprints the bases while someone speaks, holds the nearest bag in silence, and scores runs on a scoreboard pill. Runner tint follows the speaker.</p></div>
+      <div class="card agent" style="--ac:var(--server)"><span class="id">key · orb</span><div class="title">Orange Orb</div><p><span class="mono">OrbVisualizer.kt</span> — the Cliff sibling app's additive amber/bronze orb stack; breathing, spread, spin and wobble track speech, with a warm/cool center bloom per speaker.</p></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">All three run on the same <b>synthesized speech envelope</b> (<span class="mono">level</span> + <span class="mono">speechPulse</span> + <span class="mono">activeSource</span>) — the transport delivers no real audio levels. Adding a style is one <span class="mono">VisualizerStyle</span> entry plus one branch in <span class="mono">VoiceAgentScreen</span>; the editor's picker needs no change.</p>
+  </section>
+
   <!-- ============ LATENCY ============ -->
   <section id="latency">
     <div class="sec-head">
       <span class="eyebrow">The headline number</span>
       <h2>Latency HUD</h2>
-      <p>A number you can defend on stage — measured purely client-side, so an A/B against the LiveKit sibling isolates transport <i>topology</i>, not the mic.</p>
+      <p>A number you can defend on stage — measured purely client-side, so it's the user-perceived responsiveness, not a server-reported metric.</p>
     </div>
     <div class="metric">
       <div class="big"><span class="u">onUserStoppedSpeaking</span><span class="op">→</span>onBotStartedSpeaking</div>
       <p>Silence → first bot audio, per turn, via monotonic <span class="mono">SystemClock.elapsedRealtime()</span>. The server doesn't send this — the client owns the truth. Keeping <span class="mono">enable_metrics=True</span> server-side lets the turn-detect / LLM TTFB / TTS TTFB breakdown line up for cross-checking.</p>
-    </div>
-  </section>
-
-  <!-- ============ PICA VS LIVEKIT ============ -->
-  <section id="vs">
-    <div class="sec-head">
-      <span class="eyebrow">Why Pica exists</span>
-      <h2>Pipecat vs. LiveKit</h2>
-      <p>Sibling app <b>Lika</b> does the same job over LiveKit. Both are WebRTC + Opus under the hood, so an A/B on the same phone isolates the <i>topology</i> cost cleanly.</p>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th></th><th class="col-a">Pica · Pipecat</th><th class="col-b">Lika · LiveKit</th></tr></thead>
-        <tbody>
-          <tr><td class="dim">Connection</td><td class="col-a">Direct P2P WebRTC</td><td class="col-b">WebRTC through an SFU</td></tr>
-          <tr><td class="dim">Signaling</td><td class="col-a"><code style="color:var(--user)">POST /api/offer</code> (SDP)</td><td class="col-b">Mint JWT → join room</td></tr>
-          <tr><td class="dim">Server topology</td><td class="col-a">One process, one peer</td><td class="col-b">SFU + agent worker + room service</td></tr>
-          <tr><td class="dim">Client state</td><td class="col-a">None — no token, no participant metadata</td><td class="col-b">Token lifecycle, room/participant events</td></tr>
-          <tr><td class="dim">Echo cancellation</td><td class="col-a">AEC3 in libwebrtc (both ends)</td><td class="col-b">AEC3 in libwebrtc (both ends)</td></tr>
-        </tbody>
-      </table>
     </div>
   </section>
 
@@ -572,7 +570,7 @@
       <h2>Known quirks</h2>
     </div>
     <ul class="ticks warn">
-      <li><b>No client-side audio levels.</b> The SmallWebRTC RTVI client never emits amplitude, so the scope is <i>event-driven</i> — it pulses on transcript tokens (<span class="mono">speechPulse</span>) rather than true amplitude. The level hooks are wired but stay at 0.</li>
+      <li><b>No client-side audio levels.</b> The SmallWebRTC RTVI client never emits amplitude, so all three visualizers are <i>event-driven</i> — they animate on a synthesized envelope (<span class="mono">speechPulse</span> on transcript tokens + speaking start/stop) rather than true amplitude. The level hooks are wired but stay at 0.</li>
       <li><b>Voice selection is server-side in v1.</b> The app sends no voice ID; switching would need an RTVI custom message on both ends.</li>
       <li><b>onBotTranscript is deprecated</b> in the 1.x SDK (in favor of <span class="mono">onBotOutput</span>) but still fires; migrating is a follow-up, not part of the version bump.</li>
     </ul>
@@ -592,7 +590,7 @@
     <div><span>Lifecycle</span>androidx.lifecycle 2.8.6</div>
     <div><span>Toolchain</span>Kotlin · JDK 21 · compileSdk 35</div>
   </div>
-  <p class="note">Reference server lives in <span class="mono">Docs/</span>: Deepgram Nova-3 STT → Ollama qwen3:4b-instruct → Cartesia Sonic-2 TTS, with VAD + interruptions. Use the <span class="mono">-instruct</span> model, never plain <span class="mono">qwen3</span> — the reasoning-model latency trap. · Package id <span class="mono">com.m15.pica</span> is historical and slated to be renamed.</p>
+  <p class="note">The demo server is <a href="https://github.com/m15-ai/droidkaigi2026-homer-server"><b>Homer</b></a>, the baseball voice agent — a NousResearch hermes-agent brain (gpt-4.1-mini) in the pipeline's LLM slot, answering MLB questions from live data. Deepgram Nova-3 STT → hermes-agent → Cartesia Sonic-2 TTS, with VAD + interruptions; any server honoring the contract above works. · Package id <span class="mono">com.m15.pica</span> is historical and slated to be renamed.</p>
 </footer>
 
 </body>

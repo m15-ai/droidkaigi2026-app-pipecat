@@ -36,7 +36,7 @@
     },
     {
       "name": "Client-side latency truth",
-      "detail": "The headline latency number (silence -> first bot audio) is measured purely client-side so an A/B against the LiveKit sibling isolates transport topology, not the mic."
+      "detail": "The headline latency number (silence -> first bot audio) is measured purely client-side, so it reflects what the user actually hears — not a server-reported metric."
     }
   ],
   "layers": [
@@ -73,7 +73,12 @@
     {
       "path": "ServerEndpoint.kt",
       "role": "The 'agent' model",
-      "detail": "One selectable Pipecat backend: host, port, path (default /api/offer), scheme, label, accent. url and badge are derived. InitialAgents seeds the first three from BuildConfig; after seeding they are ordinary editable/deletable rows."
+      "detail": "One selectable Pipecat backend: host, port, path (default /api/offer), scheme, label, accent, and visualizer (a VisualizerStyle key stored as a plain string so unknown/future keys degrade to the default instead of failing to deserialize). url and badge are derived. InitialAgents seeds the first three from BuildConfig; after seeding they are ordinary editable/deletable rows."
+    },
+    {
+      "path": "VisualizerStyle.kt",
+      "role": "Visualizer registry",
+      "detail": "Enum of the session visualizers an agent can choose: SCOPE ('Oscilloscope', the default), BASES ('Running the Bases'), ORB ('Orange Orb'). Persisted on ServerEndpoint as its string key; fromKey() maps unknown keys to the default. Adding a style = one enum entry + one branch in VoiceAgentScreen; the editor's picker enumerates entries automatically."
     },
     {
       "path": "MicForegroundService.kt",
@@ -103,17 +108,27 @@
     {
       "path": "ui/SetupScreen.kt",
       "role": "Idle screen",
-      "detail": "Agent list: select / add / edit / delete, and start session."
+      "detail": "Agent list: select / add / edit / delete, and start session. The agent editor dialog includes a Visualizer radio list (enumerates VisualizerStyle.entries, so new styles appear without editor changes)."
     },
     {
       "path": "ui/VoiceAgentScreen.kt",
       "role": "Live session UI",
-      "detail": "Orb, transcript, speaker toggle, save FAB, latency HUD, visualizer toggle."
+      "detail": "Transcript, speaker toggle, save FAB, latency HUD, visualizer toggle. Branches on the selected agent's VisualizerStyle to compose the scope, bases, or orb visualizer — the single switch point for styles."
     },
     {
       "path": "ui/ScopeVisualizer.kt",
-      "role": "Phosphor scope",
-      "detail": "Oscilloscope-style trace — terminal green for the bot, cyan for the user — that pulses with live speech cadence."
+      "role": "Visualizer: Oscilloscope (default)",
+      "detail": "Phosphor-scope trace — terminal green for the bot, cyan for the user — that pulses with live speech cadence."
+    },
+    {
+      "path": "ui/BasesVisualizer.kt",
+      "role": "Visualizer: Running the Bases",
+      "detail": "Dodger-blue ballpark — outfield wall, foul lines, basepath, mound. A glowing runner sprints the bases while someone speaks, holds the nearest bag in silence, flashes bases on the way round, and scores runs on a scoreboard pill. Runner tint follows the speaker."
+    },
+    {
+      "path": "ui/OrbVisualizer.kt",
+      "role": "Visualizer: Orange Orb",
+      "detail": "The Cliff app's additive amber/bronze particle-orb stack, ported to Pica's synthesized speech envelope; breathing, spread, spin rate and wobble track speech, with a warm/cool center bloom per speaker."
     },
     {
       "path": "ui/PicaSessionHost.kt",
@@ -136,14 +151,24 @@
     "uplink": ["mic", "libwebrtc capture (AEC3)", "Opus encode", "WebRTC (P2P)", "server VAD + Deepgram STT"],
     "server": {
       "label": "Pipecat server (the 'agent')",
-      "pipeline": ["Deepgram Nova-3 STT", "Ollama qwen3:4b-instruct LLM", "Cartesia Sonic-2 TTS", "VAD / turn detection / barge-in"],
-      "note": "Reference stack; the app never knows which components are used. enable_metrics=True lets the server's latency breakdown line up with the client number."
+      "pipeline": ["Deepgram Nova-3 STT", "the 'LLM' slot — Homer puts a whole hermes-agent (gpt-4.1-mini) here", "Cartesia Sonic-2 TTS", "VAD / turn detection / barge-in"],
+      "note": "The demo server (Homer) stack; the app never knows which components are used — any pipeline honoring the contract works. enable_metrics=True lets the server's latency breakdown line up with the client number."
     },
     "downlink": ["Cartesia TTS", "Opus encode", "WebRTC (P2P)", "libwebrtc playback (AEC3)", "speaker"],
     "sideChannel": {
       "label": "RTVI events",
-      "drives": ["orb", "chat transcript", "latency HUD", "phosphor scope"]
+      "drives": ["chat transcript", "latency HUD", "the agent's selected visualizer (scope / bases / orb)"]
     }
+  },
+  "visualizers": {
+    "model": "A per-agent choice, not a global setting: each ServerEndpoint persists a VisualizerStyle key, picked in the agent editor and switched on in VoiceAgentScreen when that agent's session runs.",
+    "styles": [
+      { "key": "scope", "label": "Oscilloscope", "file": "ui/ScopeVisualizer.kt", "note": "The default; existing agents without a stored key resolve to it." },
+      { "key": "bases", "label": "Running the Bases", "file": "ui/BasesVisualizer.kt", "note": "Ballpark scene; runner sprints bases with speech, scores runs on a scoreboard." },
+      { "key": "orb", "label": "Orange Orb", "file": "ui/OrbVisualizer.kt", "note": "Additive amber/bronze orb ported from the Cliff sibling app." }
+    ],
+    "signal": "All three are driven by the same synthesized speech envelope (level + speechPulse + activeSource) — the SmallWebRTC transport delivers no real audio levels, so amplitude is synthesized from RTVI speaking/transcript events.",
+    "extension": "Add a VisualizerStyle entry and one branch in VoiceAgentScreen; the editor's radio list and persistence need no changes. Unknown persisted keys degrade to the default."
   },
   "sessionLifecycle": [
     { "step": 1, "title": "Start", "detail": "SetupScreen -> startSession(). ViewModel creates a Room session row (with an agent snapshot), registers an AudioDeviceCallback for hot-plug routing, and flips sessionActive=true. MainActivity requests mic (+ notifications) permission, starts MicForegroundService, and keeps the screen on." },
@@ -187,7 +212,7 @@
     "notInV1": "Voice selection. The app sends no voice ID; the server uses its configured CARTESIA_VOICE_ID. Runtime switching would need an RTVI custom message on both ends."
   },
   "agentModel": {
-    "definition": "A Pipecat backend is just data: host + port + path (+ scheme) and a label/accent. Every agent speaks the identical WebRTC+RTVI contract, so the ONLY thing that differs is the offer URL the transport POSTs to. Adding a backend is adding a row — no code.",
+    "definition": "A Pipecat backend is just data: host + port + path (+ scheme), a label/accent, and a visualizer style. Every agent speaks the identical WebRTC+RTVI contract, so the ONLY thing that differs is the offer URL the transport POSTs to (plus cosmetics). Adding a backend is adding a row — no code.",
     "seeds": [
       { "id": "hermes", "title": "Hermes", "source": "HERMES_SERVER_URL", "accent": "0xFFE0A066", "idea": "A voice persona (Kuri) on the Pi, one port" },
       { "id": "direct", "title": "Direct", "source": "PICA_SERVER_URL", "accent": "0xFF66B2E0", "idea": "The straight Pipecat voice loop" },
@@ -199,17 +224,7 @@
   "latencyHud": {
     "metric": "silence -> first bot audio",
     "measurement": "onUserStoppedSpeaking -> onBotStartedSpeaking, purely client-side, using SystemClock.elapsedRealtime() (monotonic, immune to wall-clock jumps).",
-    "purpose": "The headline number for A/B-ing Pica (Pipecat, P2P) against the LiveKit-based sibling Lika on the same device — isolates transport topology, not the mic."
-  },
-  "picaVsLiveKit": {
-    "why": "Pica's sibling Lika does the same job over LiveKit; the contrast is the reason Pica exists. Both are WebRTC + Opus under the hood, so an A/B on the same phone isolates the topology cost cleanly.",
-    "rows": [
-      { "dimension": "Connection", "pica": "Direct P2P WebRTC", "lika": "WebRTC through an SFU" },
-      { "dimension": "Signaling", "pica": "POST /api/offer (SDP)", "lika": "Mint JWT -> join room" },
-      { "dimension": "Server topology", "pica": "One process, one peer", "lika": "SFU + agent worker + room service" },
-      { "dimension": "Client state", "pica": "None — no token, no participant metadata", "lika": "Token lifecycle, room/participant events" },
-      { "dimension": "Echo cancellation", "pica": "AEC3 in libwebrtc (both ends)", "lika": "AEC3 in libwebrtc (both ends)" }
-    ]
+    "purpose": "The headline responsiveness number, per turn — what the user actually experiences, measured on the device."
   },
   "persistence": {
     "engine": "Room (KSP)",
@@ -231,7 +246,7 @@
     "hotplug": "AudioDeviceCallback re-applies routing when devices are added/removed mid-session."
   },
   "knownQuirks": [
-    "No client-side audio levels: the SmallWebRTC RTVI client never emits amplitude, so the scope is event-driven — it pulses on transcript tokens (speechPulse) rather than true amplitude. The onUserAudioLevel/onRemoteAudioLevel hooks are wired but stay at 0.",
+    "No client-side audio levels: the SmallWebRTC RTVI client never emits amplitude, so all three visualizers are event-driven — they animate on a synthesized envelope (speechPulse on transcript tokens + speaking start/stop) rather than true amplitude. The onUserAudioLevel/onRemoteAudioLevel hooks are wired but stay at 0.",
     "Voice selection is server-side in v1 — the app sends no voice ID.",
     "onBotTranscript is deprecated in the 1.x SDK (in favor of onBotOutput) but still fires; migrating is a follow-up, not part of the version bump."
   ],
@@ -245,8 +260,10 @@
     "kotlinLifecycle": "androidx.lifecycle 2.8.6"
   },
   "referenceServer": {
-    "location": "Docs/ — server.py / main.py reference pipeline, plus CLIENT_SERVER_CONTRACT.md, SERVER_DEPLOY.md, README.md, latency.py.",
-    "stack": "Deepgram Nova-3 STT -> Ollama qwen3:4b-instruct LLM -> Cartesia Sonic-2 TTS, with VAD + interruptions.",
-    "trap": "Use the -instruct model, never plain qwen3 (the reasoning-model latency trap)."
+    "name": "Homer — the baseball voice agent",
+    "location": "https://github.com/m15-ai/droidkaigi2026-homer-server — its own repo (part of the DroidKaigi 2026 demo hub). HOMER.md = what he is and how a turn flows; SERVER.md = build the server from zero.",
+    "stack": "Deepgram Nova-3 STT -> NousResearch hermes-agent (gpt-4.1-mini) in the pipeline's LLM slot -> Cartesia Sonic-2 TTS, with VAD + interruptions. Answers MLB questions from live data (mlb.py -> statsapi.mlb.com).",
+    "idea": "The voice pipeline treats a whole agent as if it were just an LLM: the client, audio stack, and WebRTC contract never change — only the brain behind the LLM slot does.",
+    "note": "Docs/ here holds only client-side docs (CLIENT_SERVER_CONTRACT.md is what any server must implement)."
   }
 }

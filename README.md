@@ -15,8 +15,7 @@ a good microphone and speaker with a nice UI on top.
 It connects over a **direct peer-to-peer WebRTC** link using the official
 [Pipecat Android SDK](https://github.com/pipecat-ai/pipecat-client-android) and the
 **RTVI** protocol. No JWT, no SFU, no rooms — signaling is literally "POST an SDP
-offer to `/api/offer`." That simplicity is the whole point (see
-[Pipecat vs. LiveKit](#pipecat-vs-livekit)).
+offer to `/api/offer`." That simplicity is the whole point.
 
 > Pica is one of three Android voice apps presented together at the **Android Voice**
 > conference, each exploring a different point in the design space:
@@ -33,15 +32,15 @@ engineering points worth landing on stage:
   intelligence — STT, LLM, TTS, turn-taking, barge-in — lives on a Pipecat server.
   Swapping the LLM or TTS voice is a server change the app never sees.
 - **Radically simple signaling.** No JWT, no SFU, no rooms. Connecting is literally
-  "POST an SDP offer to `/api/offer`." Contrast this live against the LiveKit sibling
-  ([Lika](../Lika)) to show the topology cost, not the WebRTC cost.
+  "POST an SDP offer to `/api/offer`" — one HTTP request, then the media flows
+  peer-to-peer.
 - **The whole SDK lives in one file.** The entire Pipecat surface is quarantined behind
   a transport-agnostic `Listener` in `PicaVoiceClient.kt`. The recent **major SDK jump
   (0.3.x → 1.1.0, RTVI 1.0.0)** touched exactly that one file — nothing else in the app
   moved. A clean argument for isolating your vendor SDK.
 - **A number you can defend.** The **latency HUD** measures *silence → first bot audio*
-  purely client-side (`onUserStoppedSpeaking` → `onBotStartedSpeaking`), so the on-stage
-  A/B against LiveKit isolates the transport, not the mic.
+  purely client-side (`onUserStoppedSpeaking` → `onBotStartedSpeaking`) on a monotonic
+  clock — the user-perceived number, not a server-reported one.
 - **Feels live.** Barge-in stops local playback the instant you speak — before the
   server's interrupt even round-trips — and AEC3 echo cancellation comes free from
   `libwebrtc` on both ends.
@@ -53,11 +52,11 @@ engineering points worth landing on stage:
 
 ```
                           ┌─────────── Pipecat server (the "agent") ───────────┐
- 🎙️ mic ──▶ libwebrtc ──WebRTC/Opus──▶  Deepgram STT → Ollama LLM → Cartesia TTS │
- 🔊 spk ◀── libwebrtc ◀──WebRTC/Opus──   (qwen3:4b-instruct)   + VAD / barge-in   │
+ 🎙️ mic ──▶ libwebrtc ──WebRTC/Opus──▶  Deepgram STT → "LLM" slot → Cartesia TTS │
+ 🔊 spk ◀── libwebrtc ◀──WebRTC/Opus──  (e.g. Homer's agent)  + VAD / barge-in   │
    (AEC3)                  └────────────────────────────────────────────────────┘
             │
-            └─ RTVI events (speaking/transcript) ──▶ orb, chat, latency HUD
+            └─ RTVI events (speaking/transcript) ──▶ visualizer, chat, latency HUD
 ```
 
 1. **Tap an agent, tap start.** Pica's SDK POSTs a WebRTC SDP offer to that agent's
@@ -86,35 +85,20 @@ voice, or even the entire pipeline is a server change — the app never knows.
   immediately on connect.
 - **Barge-in** — local TTS playback stops the moment you speak, before the server's
   interrupt even round-trips.
-- **Latency HUD** — live **silence → first-bot-audio** readout per turn, the headline
-  number for A/B-ing Pica against the LiveKit-based [Lika](../Lika) stack on the same
-  device.
-- **Phosphor scope visualizer** — an oscilloscope-style trace (terminal green for the
-  bot, cyan for you) that pulses with the live speech cadence.
+- **Latency HUD** — live **silence → first-bot-audio** readout per turn, measured
+  purely client-side: the user-perceived responsiveness number.
+- **Selectable per-agent visualizers** — each agent picks its own session visualizer
+  in the editor: **Oscilloscope** (phosphor trace — terminal green for the bot, cyan
+  for you), **Running the Bases** (a ballpark where a glowing runner sprints the bases
+  while someone speaks and scores runs on a scoreboard), or **Orange Orb** (an additive
+  amber particle orb ported from the Cliff sibling app). All pulse with the live
+  speech cadence.
 - **Conversation history** — transcripts persist to a local Room DB; save, rename,
   delete, and share past conversations from a drawer.
 - **Survives the screen turning off** — a microphone foreground service keeps the
   session alive when backgrounded.
 - **Smart audio routing** — speaker / wired / Bluetooth SCO / earpiece selection via
   `AudioManager`, with hot-plug detection.
-
-## Pipecat vs. LiveKit
-
-Pica's sibling app **Lika** does the same job over LiveKit. The contrast is the
-reason Pica exists:
-
-| | **Pica (Pipecat)** | **Lika (LiveKit)** |
-|---|---|---|
-| Connection | Direct **P2P** WebRTC | WebRTC through an **SFU** |
-| Signaling | `POST /api/offer` (SDP) | Mint **JWT** → join **room** |
-| Server topology | One process, one peer | SFU + agent worker + room service |
-| Client state | None — no token, no participant metadata | Token lifecycle, room/participant events |
-| Echo cancellation | AEC3 in `libwebrtc` (both ends) | AEC3 in `libwebrtc` (both ends) |
-
-Both are WebRTC + Opus under the hood, so an A/B on the same phone isolates the
-*topology* cost cleanly: total silence-to-speech, turn-detect time, audio quality,
-and battery/CPU. The headline metric is measured purely client-side
-(`onUserStoppedSpeaking` → `onBotStartedSpeaking`).
 
 ## Architecture
 
@@ -139,6 +123,7 @@ com.m15.pica
 ├── App.kt                       ServiceLocator init
 ├── VoiceAgentViewModel.kt       Session lifecycle, RTVI→UI mapping, latency HUD, persistence
 ├── ServerEndpoint.kt            One selectable Pipecat backend ("agent") + the seeded three
+├── VisualizerStyle.kt           Enum of per-agent visualizers (scope / bases / orb)
 ├── MicForegroundService.kt      Microphone foreground service (keeps session alive)
 ├── net/
 │   └── PicaVoiceClient.kt       THE ONLY file touching the Pipecat SDK; wraps PipecatClient
@@ -149,9 +134,11 @@ com.m15.pica
 │   ├── db/                      Room: AppDatabase, Entities, SessionDao, MessageDao
 │   └── repo/ConversationRepository.kt
 ├── ui/
-│   ├── SetupScreen.kt           Agent list: select / add / edit / delete, start session
-│   ├── VoiceAgentScreen.kt      Live session: orb, transcript, speaker/save controls
-│   ├── ScopeVisualizer.kt       Phosphor oscilloscope trace
+│   ├── SetupScreen.kt           Agent list: select / add / edit / delete (+ visualizer picker)
+│   ├── VoiceAgentScreen.kt      Live session: visualizer, transcript, speaker/save controls
+│   ├── ScopeVisualizer.kt       Visualizer: phosphor oscilloscope trace (default)
+│   ├── BasesVisualizer.kt       Visualizer: Running the Bases ballpark
+│   ├── OrbVisualizer.kt         Visualizer: Orange Orb particle stack
 │   ├── ConversationDrawer.kt    Saved-conversation history drawer
 │   ├── ConversationViewerScreen.kt  Read-only transcript + share
 │   └── PicaSessionHost.kt       Connects/disconnects the client around the session UI
@@ -164,15 +151,16 @@ com.m15.pica
    `PicaVoiceClient` for the selected agent's URL and connects.
 2. `PicaVoiceClient` opens the P2P WebRTC link and translates `PipecatEventCallbacks`
    into the app's `Listener` events.
-3. The ViewModel maps those events to UI state: speaking → orb/scope, transcripts →
-   chat bubbles (persisted to Room), `userStopped → botStarted` → the latency HUD.
+3. The ViewModel maps those events to UI state: speaking → the agent's visualizer,
+   transcripts → chat bubbles (persisted to Room), `userStopped → botStarted` → the
+   latency HUD.
 4. Only **one** backend is ever live at a time — switching agents tears the client
    fully down before bringing the next up.
 
 ## The "agent" model
 
 A Pipecat backend is just data: `host`, `port`, `path` (default `/api/offer`), scheme,
-and a label/accent. Because every agent speaks the identical WebRTC+RTVI contract, the
+a label/accent, and a visualizer style. Because every agent speaks the identical WebRTC+RTVI contract, the
 *only* thing that differs between them is the offer URL the transport POSTs to. Adding
 a backend is adding a row — no code. The three seeds come from build config:
 
@@ -187,19 +175,17 @@ recomputed from build config.
 
 ## The Server
 
-Pica is a client-only app. It needs a Pipecat server exposing `POST /api/offer`. A
-reference server (the same voice loop, plus deploy notes and the client⇄server
-contract) lives in [`Docs/`](Docs):
+Pica is a client-only app. It needs a Pipecat server exposing `POST /api/offer` — any
+server that implements the contract works. The demo server is
+**[Homer](https://github.com/m15-ai/droidkaigi2026-homer-server)**, a baseball voice
+agent (a NousResearch hermes-agent brain behind a Pipecat WebRTC voice stack,
+answering MLB questions from live data), in its own repo:
 
-- **[`Docs/README.md`](Docs/README.md)** — the Pipecat voice stack (Deepgram Nova-3 STT
-  → Ollama `qwen3:4b-instruct` → Cartesia Sonic-2 TTS), latency tuning, and the
-  reasoning-model trap (**use `-instruct`, never plain `qwen3`**).
+- **Homer's `SERVER.md`** — build the server yourself, from zero.
+- **Homer's `HOMER.md`** — what he is and how a turn flows.
 - **[`Docs/CLIENT_SERVER_CONTRACT.md`](Docs/CLIENT_SERVER_CONTRACT.md)** — exactly what
-  the app requires: the `/api/offer` shape, the audio contract, and the RTVI events the
-  app consumes.
-- **[`Docs/SERVER_DEPLOY.md`](Docs/SERVER_DEPLOY.md)** — how to run it.
-- **[`Docs/server.py`](Docs/server.py)** / **[`Docs/main.py`](Docs/main.py)** — the
-  reference pipeline.
+  the app requires from **any** server: the `/api/offer` shape, the audio contract, and
+  the RTVI events the app consumes.
 
 The minimum the server must do: answer `/api/offer`, run an `RTVIProcessor` +
 `RTVIObserver` (so the app gets speaking/transcript events), enable VAD + interruptions
@@ -250,9 +236,10 @@ greets you.
 ## Notes & Known Quirks
 
 - **No client-side audio levels.** The SmallWebRTC RTVI client never emits amplitude,
-  so the scope visualizer is **event-driven** — it pulses on transcript tokens to track
-  speech cadence rather than true amplitude. `onUserAudioLevel`/`onRemoteAudioLevel` are
-  wired up anyway, ready to light up for free if a future server sends levels.
+  so all the visualizers are **event-driven** — they animate on a speech envelope
+  synthesized from transcript tokens and speaking start/stop rather than true
+  amplitude. `onUserAudioLevel`/`onRemoteAudioLevel` are wired up anyway, ready to
+  light up for free if a future server sends levels.
 - **Voice selection is server-side in v1.** The app sends no voice ID; the server uses
   its configured Cartesia voice. Runtime switching would need an RTVI custom message on
   both ends.
