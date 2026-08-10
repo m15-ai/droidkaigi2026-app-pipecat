@@ -180,10 +180,23 @@ Pica is a client-only app. It needs a Pipecat server exposing `POST /api/offer` 
 server that implements the contract works. The demo server is
 **[Homer](https://github.com/m15-ai/droidkaigi2026-homer-server)**, a baseball voice
 agent (a NousResearch hermes-agent brain behind a Pipecat WebRTC voice stack,
-answering MLB questions from live data), in its own repo:
+answering MLB questions from live data), in its own repo. The demo in one picture:
 
-- **Homer's `SERVER.md`** — build the server yourself, from zero.
-- **Homer's `HOMER.md`** — what he is and how a turn flows.
+```
+Pica ──WebRTC──▶ Homer server (:7864)
+                 [ Deepgram STT → agent brain → Cartesia TTS ]
+                                     │
+                       Nous hermes-agent (gpt-4.1-mini)
+                                     │ terminal tool
+                       mlb.py → statsapi.mlb.com (live MLB data)
+```
+
+The idea worth stealing: the voice pipeline treats a whole **agent** as if it were
+just an LLM — swap the LLM slot for an agent bridge and the phone app never knows
+the difference.
+
+- **Homer's [`SERVER.md`](https://github.com/m15-ai/droidkaigi2026-homer-server/blob/main/SERVER.md)** — build the server yourself, from zero.
+- **Homer's [`HOMER.md`](https://github.com/m15-ai/droidkaigi2026-homer-server/blob/main/HOMER.md)** — what he is and how a turn flows.
 - **[`Docs/CLIENT_SERVER_CONTRACT.md`](Docs/CLIENT_SERVER_CONTRACT.md)** — exactly what
   the app requires from **any** server: the `/api/offer` shape, the audio contract, and
   the RTVI events the app consumes.
