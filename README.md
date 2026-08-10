@@ -17,15 +17,15 @@ It connects over a **direct peer-to-peer WebRTC** link using the official
 **RTVI** protocol. No JWT, no SFU, no rooms — signaling is literally "POST an SDP
 offer to `/api/offer`." That simplicity is the whole point.
 
-> Pica is one of three Android voice apps presented together at the **Android Voice**
-> conference, each exploring a different point in the design space:
+> Pica is one of three Android voice apps presented together at **DroidKaigi 2026**,
+> each exploring a different point in the design space:
 > - **[Cliff](../Cliff)** — cloud streaming pipeline wired by hand (Deepgram + Claude + Deepgram), client owns the orchestration.
 > - **[GVP](../GVP)** — fully **on-device**, no network: Sherpa-ONNX STT + MediaPipe LLM + Android TTS.
 > - **Pica** (this app) — **thin client over a Pipecat server**: the server owns the pipeline, the phone owns the audio.
 
 ## Talk Highlights
 
-Presenting Pica at the Android developers conference — the demo beats and the
+Presenting Pica at DroidKaigi 2026 — the demo beats and the
 engineering points worth landing on stage:
 
 - **The thesis in one line.** The phone is just a great mic and speaker; *all*
@@ -105,6 +105,7 @@ voice, or even the entire pipeline is a server change — the app never knows.
 Single-Activity Jetpack Compose app, MVVM, manual DI via `ServiceLocator`. The entire
 Pipecat SDK surface is quarantined in **one file** (`PicaVoiceClient`) behind a
 transport-agnostic `Listener` interface — everything else just reacts to events.
+Deeper dive: [`Docs/ARCHITECTURE.md`](Docs/ARCHITECTURE.md).
 
 | Layer | Tech |
 |-------|------|

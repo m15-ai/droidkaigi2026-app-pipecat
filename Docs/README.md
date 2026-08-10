@@ -14,7 +14,8 @@ behind a Pipecat WebRTC voice stack) — and lives in its own repo:
 
 | File | What it is |
 |---|---|
-| [ARCHITECTURE.html](ARCHITECTURE.html) | The app's architecture, visually — open in a browser |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | The app's architecture — **start here on GitHub** |
+| [ARCHITECTURE.html](ARCHITECTURE.html) | The same, prettier — open in a browser |
 | [architecture.json](architecture.json) | The same architecture as structured data |
 | [CLIENT_SERVER_CONTRACT.md](CLIENT_SERVER_CONTRACT.md) | Exactly what the app requires from **any** server: the `/api/offer` shape, the audio contract, and the RTVI events the app consumes |
 

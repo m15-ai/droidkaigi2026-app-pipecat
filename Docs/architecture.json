@@ -9,7 +9,7 @@
     "versionCode": 1,
     "thesis": "The phone is just a great microphone and speaker with a nice UI. All intelligence — STT, LLM, TTS, turn-taking, barge-in — lives on a Pipecat server. Swapping the LLM or TTS voice is a server change the app never sees.",
     "connectionModel": "Direct peer-to-peer WebRTC using the official Pipecat Android SDK and the RTVI protocol. No JWT, no SFU, no rooms — signaling is 'POST an SDP offer to /api/offer'.",
-    "presentedAt": "Android Voice conference, one of three sibling voice apps (Cliff = hand-wired cloud streaming; GVP = fully on-device; Pica = thin client over a Pipecat server)."
+    "presentedAt": "DroidKaigi 2026 (Tokyo), one of three sibling voice apps (Cliff = hand-wired cloud streaming; GVP = fully on-device; Pica = thin client over a Pipecat server)."
   },
   "platform": {
     "language": "Kotlin",
