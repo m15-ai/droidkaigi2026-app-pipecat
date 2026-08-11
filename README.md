@@ -23,12 +23,9 @@ offer to `/api/offer`." That simplicity is the whole point.
 > - **[GVP](../GVP)** — fully **on-device**, no network: Sherpa-ONNX STT + MediaPipe LLM + Android TTS.
 > - **Pica** (this app) — **thin client over a Pipecat server**: the server owns the pipeline, the phone owns the audio.
 
-## Talk Highlights
+## App Highlights
 
-Presenting Pica at DroidKaigi 2026 — the demo beats and the
-engineering points worth landing on stage:
-
-- **The thesis in one line.** The phone is just a great mic and speaker; *all*
+- **The Thesis.** The phone is just a great mic and speaker; *all*
   intelligence — STT, LLM, TTS, turn-taking, barge-in — lives on a Pipecat server.
   Swapping the LLM or TTS voice is a server change the app never sees.
 - **Radically simple signaling.** No JWT, no SFU, no rooms. Connecting is literally
@@ -38,7 +35,7 @@ engineering points worth landing on stage:
   a transport-agnostic `Listener` in `PicaVoiceClient.kt`. The recent **major SDK jump
   (0.3.x → 1.1.0, RTVI 1.0.0)** touched exactly that one file — nothing else in the app
   moved. A clean argument for isolating your vendor SDK.
-- **A number you can defend.** The **latency HUD** measures *silence → first bot audio*
+- **Measuring latency.** The **latency HUD** measures *silence → first bot audio*
   purely client-side (`onUserStoppedSpeaking` → `onBotStartedSpeaking`) on a monotonic
   clock — the user-perceived number, not a server-reported one.
 - **Feels live.** Barge-in stops local playback the instant you speak — before the
