@@ -48,10 +48,10 @@ offer to `/api/offer`." That simplicity is the whole point.
 ## How It Works
 
 ```
-                          ┌─────────── Pipecat server (the "agent") ───────────┐
+                              ┌─────────── Pipecat server (the "agent") ───────────┐
  🎙️ mic ──▶ libwebrtc ──WebRTC/Opus──▶  Deepgram STT → "LLM" slot → Cartesia TTS │
  🔊 spk ◀── libwebrtc ◀──WebRTC/Opus──  (e.g. Homer's agent)  + VAD / barge-in   │
-   (AEC3)                  └────────────────────────────────────────────────────┘
+   (AEC3)                     └────────────────────────────────────────────────────┘
             │
             └─ RTVI events (speaking/transcript) ──▶ visualizer, chat, latency HUD
 ```
