@@ -19,8 +19,8 @@ offer to `/api/offer`." That simplicity is the whole point.
 
 > Pica is one of three Android voice apps presented together at **DroidKaigi 2026**,
 > each exploring a different point in the design space:
-> - **[Cliff](../Cliff)** — cloud streaming pipeline wired by hand (Deepgram + Claude + Deepgram), client owns the orchestration.
-> - **[GVP](../GVP)** — fully **on-device**, no network: Sherpa-ONNX STT + MediaPipe LLM + Android TTS.
+> - **[Cliff](https://github.com/m15-ai/droidkaigi2026-app-cliff)** — cloud streaming pipeline wired by hand (Deepgram + Claude + Deepgram), client owns the orchestration.
+> - **[GVP](https://github.com/m15-ai/droidkaigi2026-app-gvp)** — fully **on-device**, no network: Sherpa-ONNX STT + MediaPipe LLM + Android TTS.
 > - **Pica** (this app) — **thin client over a Pipecat server**: the server owns the pipeline, the phone owns the audio.
 
 ## App Highlights
