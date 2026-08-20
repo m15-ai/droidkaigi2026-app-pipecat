@@ -185,9 +185,9 @@ Pica ──WebRTC──▶ Homer server (:7864)
                        statsapi.mlb.com (live MLB data)
 ```
 
-The idea worth stealing: the voice pipeline treats a whole **agent** as if it were
-just an LLM — swap the LLM slot for an agent bridge and the phone app never knows
-the difference.
+The key architectural idea: the voice pipeline treats a whole **agent** as if it
+were just an LLM — swap the LLM slot for an agent bridge and the phone app never
+knows the difference.
 
 - **[`Docs/CLIENT_SERVER_CONTRACT.md`](Docs/CLIENT_SERVER_CONTRACT.md)** — exactly what
   the app requires from **any** server: the `/api/offer` shape, the audio contract, and
