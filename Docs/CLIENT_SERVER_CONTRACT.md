@@ -6,9 +6,7 @@ LLM, TTS, or the whole brain and the app never notices.
 
 The reference implementation is **Homer**, the DroidKaigi 2026 demo server —
 a baseball voice agent in its own repo:
-<https://github.com/m15-ai/droidkaigi2026-homer-server>. Its `SERVER.md` walks
-through building the server from zero; its `HOMER.md` explains how a turn
-flows.
+<https://github.com/m15-ai/droidkaigi2026-homer-server>.
 
 The app is a thin client built on the official Pipecat Android SDK
 (`ai.pipecat:small-webrtc-transport:1.1.0`, which pulls `ai.pipecat:client:1.1.0`;
@@ -16,9 +14,8 @@ RTVI protocol 1.0.0). It uses the **RTVI** protocol over a **direct P2P WebRTC**
 connection — no JWT, no SFU, no rooms. Signaling is a single HTTP POST.
 
 **Want the app to talk to *your* server?** Implement the four numbered sections
-below (or follow Homer's `SERVER.md` to stand one up), then add your server as
-an agent in the app — tap **＋** on the setup screen and enter its host, port,
-and path. No app rebuild needed.
+below, then add your server as an agent in the app — tap **＋** on the setup
+screen and enter its host, port, and path. No app rebuild needed.
 
 ---
 

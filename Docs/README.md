@@ -6,8 +6,6 @@ Pipecat WebRTC voice stack) — and lives in its own repo:
 
 **<https://github.com/m15-ai/droidkaigi2026-homer-server>**
 
-- Homer's **`HOMER.md`** — what he is and how a turn flows
-- Homer's **`SERVER.md`** — build the server yourself, from zero
 - Part of the [DroidKaigi 2026 demo hub](https://github.com/m15-ai/droidkaigi2026)
 
 ## What's in this folder

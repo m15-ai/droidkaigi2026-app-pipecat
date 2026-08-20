@@ -55,7 +55,6 @@ data class ServerEndpoint(
  * deletable rows — they are NOT recomputed from BuildConfig on later launches.
  */
 object InitialAgents {
-    const val ID_DIRECT = "direct"
     const val ID_OPENCLAW = "openclaw"
 
     /** Fallback selection when nothing valid is persisted. */
@@ -63,13 +62,11 @@ object InitialAgents {
 
     /** Legacy `PicaMode.name` (old "pica_mode" pref) → new stable agent id. */
     val LEGACY_MODE_TO_ID = mapOf(
-        "DIRECT" to ID_DIRECT,
         "OPENCLAW" to ID_OPENCLAW,
     )
 
     fun all(): List<ServerEndpoint> = listOf(
         seed(ID_OPENCLAW, "OpenClaw", BuildConfig.OPENCLAW_SERVER_URL, 0xFFB28CE0),
-        seed(ID_DIRECT, "Direct", BuildConfig.PICA_SERVER_URL, 0xFF66B2E0),
     )
 
     /** Parse a full BuildConfig offer URL into endpoint fields. */

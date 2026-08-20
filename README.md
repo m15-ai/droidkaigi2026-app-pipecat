@@ -75,8 +75,8 @@ voice, or even the entire pipeline is a server change — the app never knows.
 - **Pure Pipecat path** — built on the official `ai.pipecat:small-webrtc-transport`
   SDK (**1.1.0**, RTVI protocol 1.0.0); one P2P WebRTC connection, no auth handshake.
 - **Multiple agents, one tap to switch** — keep a list of Pipecat backends (host +
-  port + path) and pick which one to talk to. Ships seeded with two (**OpenClaw**,
-  **Direct**); add/edit/delete your own. Each gets an accent color and badge.
+  port + path) and pick which one to talk to. Ships seeded with **OpenClaw**;
+  add/edit/delete your own. Each gets an accent color and badge.
 - **Bot-speaks-first greeting** — no awkward "is this thing on?"; the agent talks
   immediately on connect.
 - **Barge-in** — local TTS playback stops the moment you speak, before the server's
@@ -159,14 +159,13 @@ com.m15.pica
 A Pipecat backend is just data: `host`, `port`, `path` (default `/api/offer`), scheme,
 a label/accent, and a visualizer style. Because every agent speaks the identical WebRTC+RTVI contract, the
 *only* thing that differs between them is the offer URL the transport POSTs to. Adding
-a backend is adding a row — no code. The two seeds come from build config:
+a backend is adding a row — no code. The seed comes from build config:
 
 | Seed | Source | Idea |
 |------|--------|------|
 | **OpenClaw** | `OPENCLAW_SERVER_URL` | The agentic backend — the conference demo (default) |
-| **Direct** | `PICA_SERVER_URL` | The straight Pipecat voice loop |
 
-After first launch these are ordinary editable/deletable rows — they are not
+After first launch this is an ordinary editable/deletable row — it is not
 recomputed from build config.
 
 ## The Server
@@ -190,8 +189,6 @@ The idea worth stealing: the voice pipeline treats a whole **agent** as if it we
 just an LLM — swap the LLM slot for an agent bridge and the phone app never knows
 the difference.
 
-- **Homer's [`SERVER.md`](https://github.com/m15-ai/droidkaigi2026-homer-server/blob/main/SERVER.md)** — build the server yourself, from zero.
-- **Homer's [`HOMER.md`](https://github.com/m15-ai/droidkaigi2026-homer-server/blob/main/HOMER.md)** — what he is and how a turn flows.
 - **[`Docs/CLIENT_SERVER_CONTRACT.md`](Docs/CLIENT_SERVER_CONTRACT.md)** — exactly what
   the app requires from **any** server: the `/api/offer` shape, the audio contract, and
   the RTVI events the app consumes.
@@ -207,16 +204,16 @@ for barge-in, and seed a greeting on `on_client_connected`.
 - A reachable Pipecat server (see [The Server](#the-server))
 - `minSdk 26`
 
-**1. Point the app at your server(s)** in `local.properties`:
+**1. Point the app at your server** in `local.properties`:
 
 ```properties
 OPENCLAW_SERVER_URL=http://100.70.131.13:7862/api/offer
-PICA_SERVER_URL=http://100.70.131.13:7860/api/offer
 ```
 
-Both are required by the build (`build.gradle.kts` fails fast if either is missing).
-They can also be set as environment variables. Each is the **full** offer endpoint —
-the transport POSTs to it verbatim.
+It's required by the build (`build.gradle.kts` fails fast if it's missing), and can
+also be set as an environment variable. It is the **full** offer endpoint — the
+transport POSTs to it verbatim. Further backends are added at runtime on the setup
+screen, no rebuild needed.
 
 **2. Allow cleartext to your server** (if it's plain HTTP on a LAN/tailnet) in
 `app/src/main/res/xml/network_security_config.xml`. The repo allows a Tailscale host

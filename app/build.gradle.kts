@@ -25,20 +25,10 @@ android {
             if (f.exists()) f.inputStream().use { load(it) }
         }
 
-        // Pica's only build-time config: the Pipecat server's base URL (the
-        // /api/offer SDP endpoint). No app key, no JWT — signaling is "POST an
-        // SDP offer." See README.md for setup.
-        val picaServerUrl = (props.getProperty("PICA_SERVER_URL")
-            ?: System.getenv("PICA_SERVER_URL")
-            ?: "").trim()
-
-        if (picaServerUrl.isEmpty()) throw GradleException("PICA_SERVER_URL missing")
-
-        buildConfigField("String", "PICA_SERVER_URL", "\"$picaServerUrl\"")
-
-        // OpenClaw mode: the agentic backend (the conference demo target). Same
-        // WebRTC+RTVI contract — only the offer URL differs. The runtime mode
-        // selector picks between this and PICA_SERVER_URL.
+        // Pica's only build-time config: the OpenClaw server's offer URL (the
+        // /api/offer SDP endpoint — the conference demo target). No app key,
+        // no JWT — signaling is "POST an SDP offer." See README.md for setup.
+        // Further backends are added at runtime on the setup screen, not here.
         val openClawServerUrl = (props.getProperty("OPENCLAW_SERVER_URL")
             ?: System.getenv("OPENCLAW_SERVER_URL")
             ?: "").trim()

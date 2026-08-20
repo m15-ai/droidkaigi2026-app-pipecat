@@ -138,14 +138,13 @@ selection — the app sends no voice ID.
 Every agent speaks the identical WebRTC+RTVI contract, so the **only** thing
 that differs is the offer URL the transport POSTs to — plus cosmetics: a label,
 an accent color, and a per-agent visualizer. Adding a backend is adding a row —
-no code. Two ship seeded from build config (each `*_SERVER_URL` is required by
-the build); after first launch they're ordinary editable/deletable rows, never
+no code. One ships seeded from build config (`OPENCLAW_SERVER_URL` is required
+by the build); after first launch it's an ordinary editable/deletable row, never
 recomputed from build config.
 
 | id | Title | Source | Idea |
 |---|---|---|---|
 | `openclaw` | OpenClaw | `OPENCLAW_SERVER_URL` | The agentic backend — the conference demo, the default selection |
-| `direct` | Direct | `PICA_SERVER_URL` | The straight Pipecat voice loop |
 
 ## Visualizers — a per-agent choice
 

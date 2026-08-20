@@ -522,13 +522,12 @@
     <div class="sec-head">
       <span class="eyebrow">Configuration</span>
       <h2>The "agent" model — a backend is just data</h2>
-      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to — plus cosmetics: a label, an accent color, and a per-agent <b>visualizer</b>. Adding a backend is adding a row — no code. Two ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
+      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to — plus cosmetics: a label, an accent color, and a per-agent <b>visualizer</b>. Adding a backend is adding a row — no code. One ships seeded from build config; after first launch it's an ordinary editable/deletable row.</p>
     </div>
     <div class="grid three">
       <div class="card agent" style="--ac:#b28ce0"><span class="id">id · openclaw</span><div class="title">OpenClaw</div><p><span class="mono">OPENCLAW_SERVER_URL</span> — the agentic backend, the conference demo. The default selection.</p></div>
-      <div class="card agent" style="--ac:var(--user)"><span class="id">id · direct</span><div class="title">Direct</div><p><span class="mono">PICA_SERVER_URL</span> — the straight Pipecat voice loop.</p></div>
     </div>
-    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">Both URLs are required by the build — <span class="mono">build.gradle.kts</span> fails fast if either is missing. Each is the full offer endpoint the transport POSTs to verbatim; the seeds are <b>not</b> recomputed from build config on later launches.</p>
+    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">The URL is required by the build — <span class="mono">build.gradle.kts</span> fails fast if it's missing. It is the full offer endpoint the transport POSTs to verbatim; the seed is <b>not</b> recomputed from build config on later launches.</p>
   </section>
 
   <!-- ============ VISUALIZERS ============ -->

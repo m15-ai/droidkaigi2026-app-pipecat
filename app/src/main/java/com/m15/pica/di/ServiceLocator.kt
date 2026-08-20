@@ -21,8 +21,8 @@ object ServiceLocator {
         val db = AppDatabase.get(appContext)
         repo = ConversationRepository(db)
 
-        // No token client: Pica POSTs its SDP offer straight to PICA_SERVER_URL,
-        // which is the full offer endpoint (…:7860/api/offer) — the SmallWebRTC
+        // No token client: Pica POSTs its SDP offer straight to the selected
+        // agent's full offer endpoint (…/api/offer) — the SmallWebRTC
         // transport sends to that URL verbatim and does NOT append a path.
         // No on-device capture: Pipecat's SmallWebRTC transport owns the mic.
 
