@@ -50,7 +50,7 @@ offer to `/api/offer`." That simplicity is the whole point.
 ```
                               ┌─────────── Pipecat server (the "agent") ───────────┐
  🎙️ mic ──▶ libwebrtc ──WebRTC/Opus──▶  Deepgram STT → "LLM" slot → Cartesia TTS │
- 🔊 spk ◀── libwebrtc ◀──WebRTC/Opus──  (e.g. Homer's agent)  + VAD / barge-in   │
+ 🔊 spk ◀── libwebrtc ◀──WebRTC/Opus──  (e.g. OpenClaw)       + VAD / barge-in   │
    (AEC3)                     └────────────────────────────────────────────────────┘
             │
             └─ RTVI events (speaking/transcript) ──▶ visualizer, chat, latency HUD
@@ -75,9 +75,8 @@ voice, or even the entire pipeline is a server change — the app never knows.
 - **Pure Pipecat path** — built on the official `ai.pipecat:small-webrtc-transport`
   SDK (**1.1.0**, RTVI protocol 1.0.0); one P2P WebRTC connection, no auth handshake.
 - **Multiple agents, one tap to switch** — keep a list of Pipecat backends (host +
-  port + path) and pick which one to talk to. Ships seeded with three (**Hermes**,
-  **Direct**, **OpenClaw**); add/edit/delete your own. Each gets an accent color and
-  badge.
+  port + path) and pick which one to talk to. Ships seeded with two (**OpenClaw**,
+  **Direct**); add/edit/delete your own. Each gets an accent color and badge.
 - **Bot-speaks-first greeting** — no awkward "is this thing on?"; the agent talks
   immediately on connect.
 - **Barge-in** — local TTS playback stops the moment you speak, before the server's
@@ -160,13 +159,12 @@ com.m15.pica
 A Pipecat backend is just data: `host`, `port`, `path` (default `/api/offer`), scheme,
 a label/accent, and a visualizer style. Because every agent speaks the identical WebRTC+RTVI contract, the
 *only* thing that differs between them is the offer URL the transport POSTs to. Adding
-a backend is adding a row — no code. The three seeds come from build config:
+a backend is adding a row — no code. The two seeds come from build config:
 
 | Seed | Source | Idea |
 |------|--------|------|
-| **Hermes** | `HERMES_SERVER_URL` | A voice persona (Kuri) on the Pi, one port |
+| **OpenClaw** | `OPENCLAW_SERVER_URL` | The agentic backend — the conference demo (default) |
 | **Direct** | `PICA_SERVER_URL` | The straight Pipecat voice loop |
-| **OpenClaw** | `OPENCLAW_SERVER_URL` | An agentic backend on the Pi, another port |
 
 After first launch these are ordinary editable/deletable rows — they are not
 recomputed from build config.
@@ -176,16 +174,16 @@ recomputed from build config.
 Pica is a client-only app. It needs a Pipecat server exposing `POST /api/offer` — any
 server that implements the contract works. The demo server is
 **[Homer](https://github.com/m15-ai/droidkaigi2026-homer-server)**, a baseball voice
-agent (a NousResearch hermes-agent brain behind a Pipecat WebRTC voice stack,
-answering MLB questions from live data), in its own repo. The demo in one picture:
+agent (an **OpenClaw** agent brain behind a Pipecat WebRTC voice stack, answering
+MLB questions from live data), in its own repo. The demo in one picture:
 
 ```
 Pica ──WebRTC──▶ Homer server (:7864)
                  [ Deepgram STT → agent brain → Cartesia TTS ]
                                      │
-                       Nous hermes-agent (gpt-4.1-mini)
-                                     │ terminal tool
-                       mlb.py → statsapi.mlb.com (live MLB data)
+                              OpenClaw agent
+                                     │ tools
+                       statsapi.mlb.com (live MLB data)
 ```
 
 The idea worth stealing: the voice pipeline treats a whole **agent** as if it were
@@ -212,12 +210,11 @@ for barge-in, and seed a greeting on `on_client_connected`.
 **1. Point the app at your server(s)** in `local.properties`:
 
 ```properties
-PICA_SERVER_URL=http://100.70.131.13:7860/api/offer
-HERMES_SERVER_URL=http://100.70.131.13:7861/api/offer
 OPENCLAW_SERVER_URL=http://100.70.131.13:7862/api/offer
+PICA_SERVER_URL=http://100.70.131.13:7860/api/offer
 ```
 
-All three are required by the build (`build.gradle.kts` fails fast if any is missing).
+Both are required by the build (`build.gradle.kts` fails fast if either is missing).
 They can also be set as environment variables. Each is the **full** offer endpoint —
 the transport POSTs to it verbatim.
 

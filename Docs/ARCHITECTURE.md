@@ -27,7 +27,7 @@ server; the app never knows what's in there.
  🎙️ mic ──▶ libwebrtc ──WebRTC/Opus──▶  01 VAD · turn detection              │
    (AEC3)                              │  02 Deepgram Nova-3 STT              │
                                        │  03 "LLM" slot — e.g. Homer's        │
-                                       │     hermes-agent                     │
+                                       │     OpenClaw agent                   │
  🔊 spk ◀── libwebrtc ◀──WebRTC/Opus── │  04 Cartesia Sonic-2 TTS             │
    (AEC3)                              │  05 interruptions · barge-in         │
                                        └──────────────────────────────────────┘
@@ -39,8 +39,8 @@ server; the app never knows what's in there.
 The server pipeline is swappable and invisible to the app — any stack honoring
 the [contract](CLIENT_SERVER_CONTRACT.md) works. The demo server is
 [**Homer**](https://github.com/m15-ai/droidkaigi2026-homer-server), the baseball
-voice agent: a NousResearch hermes-agent brain (gpt-4.1-mini) in the pipeline's
-LLM slot, answering MLB questions from live data.
+voice agent: an OpenClaw agent brain in the pipeline's LLM slot, answering MLB
+questions from live data.
 
 ## Architecture layers
 
@@ -138,15 +138,14 @@ selection — the app sends no voice ID.
 Every agent speaks the identical WebRTC+RTVI contract, so the **only** thing
 that differs is the offer URL the transport POSTs to — plus cosmetics: a label,
 an accent color, and a per-agent visualizer. Adding a backend is adding a row —
-no code. Three ship seeded from build config (each `*_SERVER_URL` is required by
+no code. Two ship seeded from build config (each `*_SERVER_URL` is required by
 the build); after first launch they're ordinary editable/deletable rows, never
 recomputed from build config.
 
 | id | Title | Source | Idea |
 |---|---|---|---|
-| `hermes` | Hermes | `HERMES_SERVER_URL` | A voice persona on the Pi, one port — the default selection |
+| `openclaw` | OpenClaw | `OPENCLAW_SERVER_URL` | The agentic backend — the conference demo, the default selection |
 | `direct` | Direct | `PICA_SERVER_URL` | The straight Pipecat voice loop |
-| `openclaw` | OpenClaw | `OPENCLAW_SERVER_URL` | An agentic backend on the Pi, another port |
 
 ## Visualizers — a per-agent choice
 

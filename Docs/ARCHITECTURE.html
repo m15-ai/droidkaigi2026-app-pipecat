@@ -372,7 +372,7 @@
           <span class="cap">Pipecat server — "the agent"</span>
           <span class="stage"><span class="n">01</span> VAD · turn detection</span>
           <span class="stage"><span class="n">02</span> Deepgram Nova-3 STT</span>
-          <span class="stage"><span class="n">03</span> "LLM" slot — e.g. Homer's hermes-agent</span>
+          <span class="stage"><span class="n">03</span> "LLM" slot — e.g. Homer's OpenClaw agent</span>
           <span class="stage"><span class="n">04</span> Cartesia Sonic-2 TTS</span>
           <span class="stage"><span class="n">05</span> interruptions · barge-in</span>
         </div>
@@ -522,14 +522,13 @@
     <div class="sec-head">
       <span class="eyebrow">Configuration</span>
       <h2>The "agent" model — a backend is just data</h2>
-      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to — plus cosmetics: a label, an accent color, and a per-agent <b>visualizer</b>. Adding a backend is adding a row — no code. Three ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
+      <p>Every agent speaks the identical WebRTC+RTVI contract, so the <b>only</b> thing that differs is the offer URL the transport POSTs to — plus cosmetics: a label, an accent color, and a per-agent <b>visualizer</b>. Adding a backend is adding a row — no code. Two ship seeded from build config; after first launch they're ordinary editable/deletable rows.</p>
     </div>
     <div class="grid three">
-      <div class="card agent" style="--ac:var(--server)"><span class="id">id · hermes</span><div class="title">Hermes</div><p><span class="mono">HERMES_SERVER_URL</span> — a voice persona (Kuri) on the Pi, one port. The default selection.</p></div>
+      <div class="card agent" style="--ac:#b28ce0"><span class="id">id · openclaw</span><div class="title">OpenClaw</div><p><span class="mono">OPENCLAW_SERVER_URL</span> — the agentic backend, the conference demo. The default selection.</p></div>
       <div class="card agent" style="--ac:var(--user)"><span class="id">id · direct</span><div class="title">Direct</div><p><span class="mono">PICA_SERVER_URL</span> — the straight Pipecat voice loop.</p></div>
-      <div class="card agent" style="--ac:#b28ce0"><span class="id">id · openclaw</span><div class="title">OpenClaw</div><p><span class="mono">OPENCLAW_SERVER_URL</span> — an agentic backend on the Pi, another port.</p></div>
     </div>
-    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">All three URLs are required by the build — <span class="mono">build.gradle.kts</span> fails fast if any is missing. Each is the full offer endpoint the transport POSTs to verbatim; the seeds are <b>not</b> recomputed from build config on later launches.</p>
+    <p style="font-size:13px;color:var(--muted);margin:14px 0 0">Both URLs are required by the build — <span class="mono">build.gradle.kts</span> fails fast if either is missing. Each is the full offer endpoint the transport POSTs to verbatim; the seeds are <b>not</b> recomputed from build config on later launches.</p>
   </section>
 
   <!-- ============ VISUALIZERS ============ -->
@@ -590,7 +589,7 @@
     <div><span>Lifecycle</span>androidx.lifecycle 2.8.6</div>
     <div><span>Toolchain</span>Kotlin · JDK 21 · compileSdk 35</div>
   </div>
-  <p class="note">The demo server is <a href="https://github.com/m15-ai/droidkaigi2026-homer-server"><b>Homer</b></a>, the baseball voice agent — a NousResearch hermes-agent brain (gpt-4.1-mini) in the pipeline's LLM slot, answering MLB questions from live data. Deepgram Nova-3 STT → hermes-agent → Cartesia Sonic-2 TTS, with VAD + interruptions; any server honoring the contract above works. · Package id <span class="mono">com.m15.pica</span> is historical and slated to be renamed.</p>
+  <p class="note">The demo server is <a href="https://github.com/m15-ai/droidkaigi2026-homer-server"><b>Homer</b></a>, the baseball voice agent — an OpenClaw agent brain in the pipeline's LLM slot, answering MLB questions from live data. Deepgram Nova-3 STT → OpenClaw agent → Cartesia Sonic-2 TTS, with VAD + interruptions; any server honoring the contract above works. · Package id <span class="mono">com.m15.pica</span> is historical and slated to be renamed.</p>
 </footer>
 
 </body>

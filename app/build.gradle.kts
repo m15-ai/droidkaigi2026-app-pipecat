@@ -36,20 +36,9 @@ android {
 
         buildConfigField("String", "PICA_SERVER_URL", "\"$picaServerUrl\"")
 
-        // Hermes mode: Kuri voice persona on the same Pi, different port. Same
+        // OpenClaw mode: the agentic backend (the conference demo target). Same
         // WebRTC+RTVI contract — only the offer URL differs. The runtime mode
         // selector picks between this and PICA_SERVER_URL.
-        val hermesServerUrl = (props.getProperty("HERMES_SERVER_URL")
-            ?: System.getenv("HERMES_SERVER_URL")
-            ?: "").trim()
-
-        if (hermesServerUrl.isEmpty()) throw GradleException("HERMES_SERVER_URL missing")
-
-        buildConfigField("String", "HERMES_SERVER_URL", "\"$hermesServerUrl\"")
-
-        // OpenClaw mode: an agentic backend on the same Pi, different port. Same
-        // WebRTC+RTVI contract — only the offer URL differs. The runtime mode
-        // selector picks between this, PICA_SERVER_URL, and HERMES_SERVER_URL.
         val openClawServerUrl = (props.getProperty("OPENCLAW_SERVER_URL")
             ?: System.getenv("OPENCLAW_SERVER_URL")
             ?: "").trim()

@@ -1,8 +1,8 @@
 # Pica docs
 
 Client-side documentation for the Pica Android app. The server side of the
-demo is **Homer** — a baseball voice agent (a NousResearch hermes-agent brain
-behind a Pipecat WebRTC voice stack) — and lives in its own repo:
+demo is **Homer** — a baseball voice agent (an OpenClaw agent brain behind a
+Pipecat WebRTC voice stack) — and lives in its own repo:
 
 **<https://github.com/m15-ai/droidkaigi2026-homer-server>**
 

@@ -10,7 +10,7 @@ import java.util.UUID
  * so a new agent is purely data: host + port (+ path/scheme) and a label.
  *
  * Persisted as JSON by [com.m15.pica.prefs.PicaLocalPrefs]; [InitialAgents] seeds
- * the first three. [url] and [badge] are derived (not stored) so there is a single
+ * the initial rows. [url] and [badge] are derived (not stored) so there is a single
  * source of truth.
  *
  * @param accentArgb 0xAARRGGBB badge tint as a [Long] — the historic literals
@@ -50,29 +50,26 @@ data class ServerEndpoint(
 }
 
 /**
- * The three agents seeded into the database on first launch (from `BuildConfig`,
+ * The agents seeded into the database on first launch (from `BuildConfig`,
  * which is fed by `local.properties`). After seeding they are ordinary editable /
  * deletable rows — they are NOT recomputed from BuildConfig on later launches.
  */
 object InitialAgents {
-    const val ID_HERMES = "hermes"
     const val ID_DIRECT = "direct"
     const val ID_OPENCLAW = "openclaw"
 
     /** Fallback selection when nothing valid is persisted. */
-    const val DEFAULT_ID = ID_HERMES
+    const val DEFAULT_ID = ID_OPENCLAW
 
     /** Legacy `PicaMode.name` (old "pica_mode" pref) → new stable agent id. */
     val LEGACY_MODE_TO_ID = mapOf(
-        "HERMES" to ID_HERMES,
         "DIRECT" to ID_DIRECT,
         "OPENCLAW" to ID_OPENCLAW,
     )
 
     fun all(): List<ServerEndpoint> = listOf(
-        seed(ID_HERMES, "Hermes", BuildConfig.HERMES_SERVER_URL, 0xFFE0A066),
-        seed(ID_DIRECT, "Direct", BuildConfig.PICA_SERVER_URL, 0xFF66B2E0),
         seed(ID_OPENCLAW, "OpenClaw", BuildConfig.OPENCLAW_SERVER_URL, 0xFFB28CE0),
+        seed(ID_DIRECT, "Direct", BuildConfig.PICA_SERVER_URL, 0xFF66B2E0),
     )
 
     /** Parse a full BuildConfig offer URL into endpoint fields. */
