@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.m15.pica.AudioSource
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -124,8 +125,9 @@ fun BasesVisualizer(
 
     // Plain (non-snapshot) state advanced on the frame clock.
     // dyn: [0]=basepath position t in [0,4) (0=home 1=1st 2=2nd 3=3rd), [1]=envelope
-    // follower, [2]=current pace (bases/sec, smoothed).
-    val dyn = remember { floatArrayOf(0f, 0f, 0f) }
+    // follower, [2]=current pace (bases/sec, smoothed), [3]=stride phase (radians,
+    // drives the sprite's arm/leg cycle).
+    val dyn = remember { floatArrayOf(0f, 0f, 0f, 0f) }
     val flash = remember { FloatArray(4) }          // per-base rounded-it glow
     val trail = remember { FloatArray(TRAIL) }      // t history ring → ghost trail
     val trailIdx = remember { intArrayOf(0) }
@@ -182,6 +184,8 @@ fun BasesVisualizer(
                 }
 
                 for (i in 0..3) flash[i] = (flash[i] - dt * 1.8f).coerceAtLeast(0f)
+                // Stride cadence: slow sway at rest, ~4.5 strides/sec at full sprint.
+                dyn[3] += dt * (3f + 16f * dyn[2])
                 trail[trailIdx[0]] = dyn[0]
                 trailIdx[0] = (trailIdx[0] + 1) % TRAIL
             }
@@ -228,7 +232,7 @@ fun BasesVisualizer(
 
             // Ghost trail: oldest→newest, fading in and growing toward the runner.
             val head = trailIdx[0]
-            val ball = r * 0.055f
+            val ball = r * 0.07f
             for (i in 0 until TRAIL) {
                 val p = posFor(trail[(head + i) % TRAIL])
                 val age = i / (TRAIL - 1f)          // 0 = oldest, 1 = newest
@@ -239,17 +243,19 @@ fun BasesVisualizer(
                 )
             }
 
-            // The runner: a baseball with a team-colored bloom. Bobs in place while
-            // holding a base, swells with the envelope while sprinting.
+            // The runner: an animated sprite with a team-colored bloom. Stands and
+            // bobs while holding a base, leans in and pumps arms/legs while sprinting;
+            // the whole figure swells slightly with the envelope.
             val lvl = dyn[1]
             val paceNorm = (dyn[2] / (PACE_FLOOR + PACE_LEVEL)).coerceIn(0f, 1f)
             val bob = sin(syn[1] * 2.5f) * r * 0.02f * (1f - paceNorm)
             val p = posFor(dyn[0]) + Offset(0f, bob)
-            val rr = ball * (1f + 0.5f * lvl)
             val bright = (0.5f + 0.5f * lvl).coerceIn(0f, 1f)
-            drawCircle(runnerColor.copy(alpha = 0.10f * bright + 0.05f), rr * 3.2f, p)
-            drawCircle(runnerColor.copy(alpha = 0.30f * bright + 0.10f), rr * 1.9f, p)
-            drawCircle(lerp(runnerColor, BallWhite, 0.6f).copy(alpha = 0.6f + 0.4f * bright), rr, p)
+            val hgt = r * 0.32f * (1f + 0.15f * lvl)
+            val torso = p + Offset(0f, -hgt * 0.5f)
+            drawCircle(runnerColor.copy(alpha = 0.10f * bright + 0.05f), hgt * 1.5f, torso)
+            drawCircle(runnerColor.copy(alpha = 0.25f * bright + 0.08f), hgt * 0.9f, torso)
+            drawRunner(p, hgt, dyn[3], paceNorm, runnerColor, bright)
         }
 
         // Scoreboard pill — runs scored (laps completed).
@@ -350,17 +356,18 @@ private fun DrawScope.drawField(
     drawCircle(DodgerDim, radius = r * 0.10f, center = center, style = Stroke(width = 1.5f))
     drawCircle(DodgerBlue.copy(alpha = 0.5f), radius = r * 0.02f, center = center)
 
-    // Bases: white diamonds; a rounded base blooms and fades.
-    val s = r * 0.075f
+    // Bases: white 3D slabs; a rounded base blooms and fades.
+    val s = r * 0.1875f                 // 2.5× the classic flat-base size
+    val depth = s * 0.35f
     for (i in 0..3) {
         val c = corners[i]
         val f = flash[i]
-        if (f > 0f) drawBase(c, s * (1.6f + 1.2f * f), BallWhite.copy(alpha = 0.30f * f))
-        drawBase(c, s, if (i == 0) BallWhite else BallWhite.copy(alpha = 0.85f))
+        if (f > 0f) drawBase(c, s * (1.25f + 0.45f * f), BallWhite.copy(alpha = 0.28f * f))
+        drawBase3D(c, s, if (i == 0) BallWhite else BallWhite.copy(alpha = 0.92f), depth)
     }
 }
 
-/** A base as a small axis-aligned diamond (rotated square) centered on [c]. */
+/** A base as an axis-aligned diamond (rotated square) centered on [c]. */
 private fun DrawScope.drawBase(c: Offset, s: Float, color: Color) {
     val p = Path().apply {
         moveTo(c.x, c.y - s)
@@ -370,6 +377,72 @@ private fun DrawScope.drawBase(c: Offset, s: Float, color: Color) {
         close()
     }
     drawPath(p, color)
+}
+
+/**
+ * A base as a 3D slab: the [drawBase] diamond extruded down by [depth], its two
+ * lower side faces shaded toward the night-field blue so it reads as a pad
+ * raised off the infield, with a seam line where the faces meet.
+ */
+private fun DrawScope.drawBase3D(c: Offset, s: Float, top: Color, depth: Float) {
+    val side = Path().apply {
+        moveTo(c.x - s, c.y)
+        lineTo(c.x - s, c.y + depth)
+        lineTo(c.x, c.y + s + depth)
+        lineTo(c.x + s, c.y + depth)
+        lineTo(c.x + s, c.y)
+        lineTo(c.x, c.y + s)
+        close()
+    }
+    drawPath(side, lerp(top, DodgerDim, 0.70f).copy(alpha = top.alpha * 0.95f))
+    drawLine(
+        color = lerp(top, DodgerDim, 0.85f).copy(alpha = top.alpha),
+        start = Offset(c.x, c.y + s),
+        end = Offset(c.x, c.y + s + depth),
+        strokeWidth = 1.5f,
+    )
+    drawBase(c, s, top)
+}
+
+/**
+ * The runner as a small animated stick-figure sprite standing on [ground]:
+ * head, leaning torso, counter-swinging arms and pumping legs. [phase] drives
+ * the stride cycle; [paceNorm] (0..1) blends from standing-on-base to a full
+ * sprint (forward lean, longer stride, front-foot lift). Drawn in code — no
+ * bitmap asset — so it tints with the speaker color like the rest of the viz.
+ */
+private fun DrawScope.drawRunner(
+    ground: Offset,
+    hgt: Float,
+    phase: Float,
+    paceNorm: Float,
+    color: Color,
+    bright: Float,
+) {
+    val stroke = hgt * 0.10f
+    val body = lerp(color, BallWhite, 0.55f).copy(alpha = 0.75f + 0.25f * bright)
+    val lean = hgt * 0.22f * paceNorm
+    val hip = Offset(ground.x + lean * 0.35f, ground.y - hgt * 0.42f)
+    val neck = Offset(ground.x + lean, ground.y - hgt * 0.78f)
+    val headC = Offset(neck.x + lean * 0.25f, ground.y - hgt * 0.90f)
+    val headR = hgt * 0.13f
+
+    val swing = sin(phase)
+    val swing2 = sin(phase + PI.toFloat())              // opposite limb
+    val stride = hgt * (0.10f + 0.38f * paceNorm)
+    val lift = hgt * 0.16f * paceNorm                   // swinging foot lifts
+    val footA = Offset(hip.x + stride * swing, ground.y - lift * max(0f, swing))
+    val footB = Offset(hip.x + stride * swing2, ground.y - lift * max(0f, swing2))
+    val armLen = hgt * (0.14f + 0.20f * paceNorm)
+    val handA = Offset(neck.x + armLen * swing2, neck.y + hgt * (0.16f - 0.06f * swing2))
+    val handB = Offset(neck.x + armLen * swing, neck.y + hgt * (0.16f - 0.06f * swing))
+
+    drawLine(body, hip, footA, strokeWidth = stroke, cap = StrokeCap.Round)
+    drawLine(body, hip, footB, strokeWidth = stroke, cap = StrokeCap.Round)
+    drawLine(body, neck, handA, strokeWidth = stroke * 0.85f, cap = StrokeCap.Round)
+    drawLine(body, neck, handB, strokeWidth = stroke * 0.85f, cap = StrokeCap.Round)
+    drawLine(body, neck, hip, strokeWidth = stroke * 1.15f, cap = StrokeCap.Round)
+    drawCircle(lerp(color, BallWhite, 0.75f).copy(alpha = 0.85f + 0.15f * bright), headR, headC)
 }
 
 @Preview(widthDp = 360, heightDp = 480, backgroundColor = 0xFF000000, showBackground = true)
