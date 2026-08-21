@@ -73,7 +73,7 @@
     {
       "path": "ServerEndpoint.kt",
       "role": "The 'agent' model",
-      "detail": "One selectable Pipecat backend: host, port, path (default /api/offer), scheme, label, accent, and visualizer (a VisualizerStyle key stored as a plain string so unknown/future keys degrade to the default instead of failing to deserialize). url and badge are derived. InitialAgents seeds the first three from BuildConfig; after seeding they are ordinary editable/deletable rows."
+      "detail": "One selectable Pipecat backend: host, port, path (default /api/offer), scheme, label, accent, and visualizer (a VisualizerStyle key stored as a plain string so unknown/future keys degrade to the default instead of failing to deserialize). url and badge are derived. InitialAgents seeds the OpenClaw row from BuildConfig; after seeding it is an ordinary editable/deletable row."
     },
     {
       "path": "VisualizerStyle.kt",
@@ -259,7 +259,7 @@
   },
   "referenceServer": {
     "name": "Homer — the baseball voice agent",
-    "location": "https://github.com/m15-ai/droidkaigi2026-homer-server — its own repo (part of the DroidKaigi 2026 demo hub).",
+    "location": "https://github.com/m15-ai/droidkaigi2026-homer-openclaw — its own repo (part of the DroidKaigi 2026 demo hub).",
     "stack": "Deepgram Nova-3 STT -> an OpenClaw agent in the pipeline's LLM slot -> Cartesia Sonic-2 TTS, with VAD + interruptions. Answers MLB questions from live data (statsapi.mlb.com).",
     "idea": "The voice pipeline treats a whole agent as if it were just an LLM: the client, audio stack, and WebRTC contract never change — only the brain behind the LLM slot does.",
     "note": "Docs/ here holds only client-side docs (CLIENT_SERVER_CONTRACT.md is what any server must implement)."

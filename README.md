@@ -119,7 +119,7 @@ com.m15.pica
 ├── MainActivity.kt              Compose host: setup / live session / history viewer
 ├── App.kt                       ServiceLocator init
 ├── VoiceAgentViewModel.kt       Session lifecycle, RTVI→UI mapping, latency HUD, persistence
-├── ServerEndpoint.kt            One selectable Pipecat backend ("agent") + the seeded three
+├── ServerEndpoint.kt            One selectable Pipecat backend ("agent") + the OpenClaw seed
 ├── VisualizerStyle.kt           Enum of per-agent visualizers (scope / bases / orb)
 ├── MicForegroundService.kt      Microphone foreground service (keeps session alive)
 ├── net/
@@ -172,12 +172,12 @@ recomputed from build config.
 
 Pica is a client-only app. It needs a Pipecat server exposing `POST /api/offer` — any
 server that implements the contract works. The demo server is
-**[Homer](https://github.com/m15-ai/droidkaigi2026-homer-server)**, a baseball voice
+**[Homer](https://github.com/m15-ai/droidkaigi2026-homer-openclaw)**, a baseball voice
 agent (an **OpenClaw** agent brain behind a Pipecat WebRTC voice stack, answering
 MLB questions from live data), in its own repo. The demo in one picture:
 
 ```
-Pica ──WebRTC──▶ Homer server (:7864)
+Pica ──WebRTC──▶ Homer server (:7865)
                  [ Deepgram STT → agent brain → Cartesia TTS ]
                                      │
                               OpenClaw agent

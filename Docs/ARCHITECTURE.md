@@ -38,7 +38,7 @@ server; the app never knows what's in there.
 
 The server pipeline is swappable and invisible to the app — any stack honoring
 the [contract](CLIENT_SERVER_CONTRACT.md) works. The demo server is
-[**Homer**](https://github.com/m15-ai/droidkaigi2026-homer-server), the baseball
+[**Homer**](https://github.com/m15-ai/droidkaigi2026-homer-openclaw), the baseball
 voice agent: an OpenClaw agent brain in the pipeline's LLM slot, answering MLB
 questions from live data.
 

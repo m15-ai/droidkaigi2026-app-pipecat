@@ -6,7 +6,7 @@ LLM, TTS, or the whole brain and the app never notices.
 
 The reference implementation is **Homer**, the DroidKaigi 2026 demo server —
 a baseball voice agent in its own repo:
-<https://github.com/m15-ai/droidkaigi2026-homer-server>.
+<https://github.com/m15-ai/droidkaigi2026-homer-openclaw>.
 
 The app is a thin client built on the official Pipecat Android SDK
 (`ai.pipecat:small-webrtc-transport:1.1.0`, which pulls `ai.pipecat:client:1.1.0`;
@@ -41,9 +41,9 @@ make sure the endpoint answers at the path the agent is configured with (default
 completes and media flows P2P.
 
 - **Where the URL comes from**: each agent row in the app stores scheme + host +
-  port + path; the transport POSTs to that full URL verbatim. Three agents are
-  seeded at first launch from the build's `*_SERVER_URL` values, but any agent
-  can be added or edited in-app.
+  port + path; the transport POSTs to that full URL verbatim. The OpenClaw agent
+  is seeded at first launch from the build's `OPENCLAW_SERVER_URL` value, and any
+  agent can be added or edited in-app.
 - **Cleartext note**: for plain `http://` signaling, the host must be listed in
   the app's `res/xml/network_security_config.xml` (Android blocks cleartext by
   default). The WebRTC media is DTLS-encrypted regardless.
@@ -117,5 +117,5 @@ cross-checking.
 - `app/.../VoiceAgentViewModel.kt` — maps those events to UI state, transcript
   persistence, and the latency HUD.
 - `app/.../ServerEndpoint.kt` — the agent model (host/port/path + label, accent,
-  visualizer); `local.properties` `*_SERVER_URL` values seed the first three rows.
+  visualizer); the `local.properties` `OPENCLAW_SERVER_URL` value seeds the first row.
 - `res/xml/network_security_config.xml` — host allowlist for cleartext signaling.

@@ -4,7 +4,7 @@ Client-side documentation for the Pica Android app. The server side of the
 demo is **Homer** — a baseball voice agent (an OpenClaw agent brain behind a
 Pipecat WebRTC voice stack) — and lives in its own repo:
 
-**<https://github.com/m15-ai/droidkaigi2026-homer-server>**
+**<https://github.com/m15-ai/droidkaigi2026-homer-openclaw>**
 
 - Part of the [DroidKaigi 2026 demo hub](https://github.com/m15-ai/droidkaigi2026)
 
